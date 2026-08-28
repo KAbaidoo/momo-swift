@@ -17,7 +17,27 @@ public actor MoMoAPIClient{
         self.subscriptionKey = subscriptionKey
         self.urlSession = urlSession
     }
+    
+    /// Executes a request expecting a decoded JSON response (e.g. GET requests or OAuth Token generation)
+    public func execute<T: Decodable>(_ endpoint: MoMoEndpoint, responseType: T.Type, bearerToken: String? = nil) async throws -> T {
+        let response = try await performRequest(endpoint, bearerToken: bearerToken)
+        
+        do {
+            let decoder = JSONDecoder()
+            return try decoder.decode(T.self, from: response.data)
+        } catch  let error as DecodingError {
+            throw MoMoError.decodingFailed(error)
+        }
+    }
+    
+    /// Executes a request where we only care about the success status (e.g., POST async operations returning 202 Accepted)
+    public func execute(_ endpoint: MoMoEndpoint, bearerToken: String? = nil) async throws -> HTTPURLResponse {
+        return try await performRequest(endpoint, bearerToken: bearerToken).response
+    }
+    
+    
     // MARK: - Private Core Logic
+    
     private func performRequest(_ endpoint: MoMoEndpoint, bearerToken: String?) async throws -> (data: Data, response: HTTPURLResponse) {
         
         guard let url = URL(string: environment.baseURL.absoluteString + endpoint.path) else {
