@@ -5,7 +5,7 @@ import PackageDescription
 
 let package = Package(
     name: "MoMoSDK",
-    platforms: [.iOS(.v15), .macOS(.v12), .watchOS(.v8), .tvOS(.v15)],
+    platforms: [.iOS(.v16), .macOS(.v13), .watchOS(.v8), .tvOS(.v15)],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(name: "MoMoSDK", targets: ["MoMoSDK"]),

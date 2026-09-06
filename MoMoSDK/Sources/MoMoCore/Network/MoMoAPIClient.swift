@@ -31,6 +31,7 @@ public actor MoMoAPIClient{
     }
     
     /// Executes a request where we only care about the success status (e.g., POST async operations returning 202 Accepted)
+    @discardableResult
     public func execute(_ endpoint: MoMoEndpoint, bearerToken: String? = nil) async throws -> HTTPURLResponse {
         return try await performRequest(endpoint, bearerToken: bearerToken).response
     }
