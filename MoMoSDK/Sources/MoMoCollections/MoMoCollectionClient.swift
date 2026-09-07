@@ -9,8 +9,8 @@ import Foundation
 import MoMoCore
 
 public struct MoMoCollectionClient {
-    private let client: MoMoAPIClient
-    private let tokenProvider: MoMoTokenProvider
+    internal let client: MoMoAPIClient
+    internal let tokenProvider: MoMoTokenProvider
     
     public init(client: MoMoAPIClient, tokenProvider: MoMoTokenProvider) {
         self.client = client
@@ -45,9 +45,7 @@ public struct MoMoCollectionClient {
         
         return try await client.execute(endpoint, responseType: RequestToPayStatus.self, bearerToken: token)
     }
-}
-
-extension MoMoCollectionClient {
+    
     
     /// Initiates a RequestToPay and continuously polls the status until it succeeds, fails, or times out.
     public func requestToPayAndWait(
@@ -78,5 +76,19 @@ extension MoMoCollectionClient {
         }
         
         throw MoMoError.unexpectedResponse // Or a custom .timeout error
+    }
+    
+    /// Sends a delivery notification for a successfully completed RequestToPay transaction.
+    public func sendDeliveryNotification(
+        for referenceId: String,
+        message: String
+    ) async throws {
+        let token = try await tokenProvider.getValidToken()
+        let payload = DeliveryNotification(notificationMessage: message)
+        
+        // Now using the logically grouped RequestToPayEndpoint
+        let endpoint = RequestToPayEndpoint.deliveryNotification(referenceId: referenceId, payload: payload)
+        
+        try await client.execute(endpoint, bearerToken: token)
     }
 }
