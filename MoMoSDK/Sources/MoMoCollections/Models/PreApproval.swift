@@ -22,3 +22,12 @@ public struct PreApprovalRequest: Codable, Sendable, Equatable {
     }
 }
 
+public struct PreApprovalStatus: Codable, Sendable, Equatable {
+    public let payer: Party
+    public let payerCurrency: String
+    public let payerMessage: String?
+    public let externalId: String?
+    public let transactionStatus: TransactionStatus
+    
+    public let preApprovalId: String?
+}
