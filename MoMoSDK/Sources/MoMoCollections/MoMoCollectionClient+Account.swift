@@ -34,4 +34,12 @@ extension MoMoCollectionClient {
             throw error
         }
     }
+    
+    /// Retrieves basic KYC information (e.g., name and locale) for a specific MoMo user.
+    public func getBasicUserInfo(party: Party) async throws -> BasicUserInfo {
+        let token = try await tokenProvider.getValidToken()
+        let endpoint = AccountEndpoint.getBasicUserInfo(party: party)
+        
+        return try await client.execute(endpoint, responseType: BasicUserInfo.self, bearerToken: token)
+    }
 }

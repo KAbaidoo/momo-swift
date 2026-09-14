@@ -11,6 +11,7 @@ import MoMoCore
 enum AccountEndpoint: MoMoEndpoint{
     case getBalance
     case validateAccountHolder(party: Party)
+    case getBasicUserInfo(party: Party)
     
     var path: String {
         switch self {
@@ -19,6 +20,9 @@ enum AccountEndpoint: MoMoEndpoint{
         case .validateAccountHolder(let party):
             let type = party.partyIdType.rawValue.lowercased()
             return "/collection/v1_0/accountholder/\(type)/\(party.partyId)/active"
+        case .getBasicUserInfo(let party): // New Path
+            let type = party.partyIdType.rawValue.lowercased()
+            return "/collection/v1_0/accountholder/\(type)/\(party.partyId)/basicuserinfo"
         }
         
     }
