@@ -12,7 +12,23 @@ public struct MoMoCollectionClient {
     internal let client: MoMoAPIClient
     internal let tokenProvider: MoMoTokenProvider
     
-    public init(client: MoMoAPIClient, tokenProvider: MoMoTokenProvider) {
+    /// Primary public initializer for app developers
+    public init(credentials: MoMoCredentials, environment: MoMoEnvironment) {
+        let client = MoMoAPIClient(
+            environment: environment,
+            subscriptionKey: credentials.subscriptionKey
+        )
+        let tokenProvider = MoMoTokenProvider(
+            apiUser: credentials.apiUser,
+            apiKey: credentials.apiKey,
+            tokenPath: "/collection/token/",
+            client: client
+        )
+        self.init(client: client, tokenProvider: tokenProvider)
+    }
+    
+    /// Internal initializer for dependency injection and unit testing
+    internal init(client: MoMoAPIClient, tokenProvider: MoMoTokenProvider) {
         self.client = client
         self.tokenProvider = tokenProvider
     }
