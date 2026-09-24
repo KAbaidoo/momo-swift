@@ -35,4 +35,39 @@ public struct MoMoDisbursementClient {
     }
     
     
+    /// Initiates a transfer and returns the generated reference ID.
+    public func transfer(payload: TransferRequest, referenceId: UUID = UUID(), callbackURL: String? = nil) async throws -> String {
+        let token = try await tokenProvider.getValidToken()
+        let uuidString = referenceId.uuidString
+        let endpoint = TransferEndpoint.initiate(referenceId: uuidString, payload: payload, callbackURL: callbackURL)
+        
+        // POST returns 202 Accepted without a body
+        try await client.execute(endpoint, bearerToken: token)
+        return uuidString
+    }
+    
+    /// Fetches the current status of a specific transfer
+    public func getTransferStatus(referenceId: String) async throws -> TransferStatus {
+        let token = try await tokenProvider.getValidToken()
+        let endpoint = TransferEndpoint.status(referenceId: referenceId)
+        return try await client.execute(endpoint, responseType: TransferStatus.self, bearerToken: token)
+    }
+    
+    /// Initiates a transfer and automatically polls until it reaches a final state
+    public func transferAndWait(payload: TransferRequest, maxAttempts: Int = 12, delayBetweenAttempts: Duration = .seconds(5)) async throws -> TransferStatus {
+        let referenceId = try await transfer(payload: payload)
+        var attempts = 0
+        
+        while attempts < maxAttempts {
+            attempts += 1
+            try await Task.sleep(for: delayBetweenAttempts)
+            let status = try await getTransferStatus(referenceId: referenceId)
+            
+            if status.status != .pending {
+                return status
+            }
+        }
+        throw MoMoError.unexpectedResponse
+    }
+    
 }

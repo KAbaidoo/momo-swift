@@ -28,7 +28,7 @@ public struct RequestToWithdrawRequest: Codable, Sendable, Equatable {
 
 
 public struct RequestToWithdrawStatus: Codable, Sendable, Equatable {
-    public let financialTransactionId: String
+    public let financialTransactionId: String?
     public let externalId: String?
     public let amount: String
     public let currency: String
