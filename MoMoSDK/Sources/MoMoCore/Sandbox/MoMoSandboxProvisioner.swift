@@ -58,7 +58,12 @@ private enum SandboxEndpoint: MoMoEndpoint {
 public struct MoMoSandboxProvisioner {
     private let client: MoMoAPIClient
     
-    public init(client: MoMoAPIClient) {
+    public init(subscriptionKey: String) {
+        let client = MoMoAPIClient(environment: .sandbox, subscriptionKey: subscriptionKey)
+        self.init(client: client)
+    }
+    
+    private init(client: MoMoAPIClient) {
         self.client = client
     }
     
