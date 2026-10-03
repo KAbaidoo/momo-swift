@@ -71,7 +71,7 @@ class CheckoutViewModel: ObservableObject {
                 return
             }
             
-            if finalStatus.status == .success || finalStatus.status == .successful {
+            if finalStatus.status == .successful {
                 self.transactionStatus = "Success! ID: \(finalStatus.financialTransactionId ?? "")"
             } else {
                 self.transactionStatus = "Failed: \(finalStatus.reason?.message ?? "Unknown Error")"

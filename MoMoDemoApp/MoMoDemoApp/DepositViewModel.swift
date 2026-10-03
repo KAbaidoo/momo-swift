@@ -43,7 +43,7 @@ class DepositViewModel: ObservableObject {
         do {
             let finalStatus = try await client.depositAndWait(payload: payload)
             
-            if finalStatus.status == .success || finalStatus.status == .successful {
+            if finalStatus.status == .successful {
                 self.transactionStatus = "Success! ID: \(finalStatus.financialTransactionId ?? "")"
             } else {
                 self.transactionStatus = "Failed: \(finalStatus.reason?.message ?? "Unknown")"
