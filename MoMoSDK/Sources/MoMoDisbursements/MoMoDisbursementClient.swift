@@ -38,7 +38,7 @@ public struct MoMoDisbursementClient {
     /// Initiates a transfer and returns the generated reference ID.
     public func transfer(payload: TransferRequest, referenceId: UUID = UUID(), callbackURL: String? = nil) async throws -> String {
         let token = try await tokenProvider.getValidToken()
-        let uuidString = referenceId.uuidString
+        let uuidString = referenceId.uuidString.lowercased()
         let endpoint = TransferEndpoint.initiate(referenceId: uuidString, payload: payload, callbackURL: callbackURL)
         
         // POST returns 202 Accepted without a body
@@ -67,7 +67,7 @@ public struct MoMoDisbursementClient {
                 return status
             }
         }
-        throw MoMoError.unexpectedResponse
+        throw MoMoError.unexpectedResponse(statusCode: -1, message: "Non-HTTP URLResponse")
     }
     
 }

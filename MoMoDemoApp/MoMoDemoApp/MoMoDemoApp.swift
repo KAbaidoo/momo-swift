@@ -8,7 +8,7 @@
 import SwiftUI
 
 @main
-struct MoMoDemoAppApp: App {
+struct MoMoDemoApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()

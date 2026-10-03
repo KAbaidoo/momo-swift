@@ -71,7 +71,7 @@ public struct MoMoSandboxProvisioner {
     /// - Parameter callbackHost: The domain registered for your webhooks (e.g., "webhook.site").
     /// - Returns: A tuple containing the newly generated `apiUser` and `apiKey`.
     public func createSandboxCredentials(
-        callbackHost: String = "localhost"
+        callbackHost: String = "webhook.site"
     ) async throws -> (apiUser: String, apiKey: String) {
         
         // 1. Safety Check: Ensure this is never run against a production URL
@@ -80,7 +80,7 @@ public struct MoMoSandboxProvisioner {
         }
         
         // The UUID becomes the API User ID
-        let referenceId = UUID().uuidString
+        let referenceId = UUID().uuidString.lowercased()
         
         // 2. Create the API User
         // Expects a 201 Created. No response body to decode.

@@ -30,7 +30,7 @@ class CheckoutViewModel: ObservableObject {
         let payload = RequestToPayRequest(
                     amount: amount,
                     currency: "EUR", // Default sandbox currency
-                    externalId: UUID().uuidString,
+                    externalId: UUID().uuidString.lowercased(),
                     payer: Party(partyIdType: .msisdn, partyId: phoneNumber),
                     payerMessage: "Demo App Purchase",
                     payeeNote: "Test Transaction"

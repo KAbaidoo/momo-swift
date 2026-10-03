@@ -17,7 +17,7 @@ extension MoMoCollectionClient {
         callbackURL: String? = nil
     ) async throws -> String {
         let token = try await tokenProvider.getValidToken()
-        let uuidString = referenceId.uuidString
+        let uuidString = referenceId.uuidString.lowercased()
         let endpoint = InvoiceEndpoint.create(
             referenceId: uuidString,
             payload: payload,

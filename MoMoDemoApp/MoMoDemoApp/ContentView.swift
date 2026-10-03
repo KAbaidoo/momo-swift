@@ -12,38 +12,69 @@ struct ContentView: View {
     
     var body: some View {
         NavigationView {
-            if let credentials = setupVM.credentials {
+            if setupVM.isKeyMissing {
+                MissingKeyInstructionsView()
+            } else if let credentials = setupVM.credentials {
                 CheckoutView(viewModel: CheckoutViewModel(credentials: credentials))
             } else {
-                SandboxSetupView(viewModel: setupVM)
+                VStack(spacing: 20) {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                    Text("Provisioning Sandbox...")
+                        .foregroundColor(.secondary)
+                    
+                    if let error = setupVM.errorMessage {
+                        Text(error)
+                            .foregroundColor(.red)
+                            .multilineTextAlignment(.center)
+                            .padding()
+                    }
+                }
+                .navigationTitle("Starting Demo")
+                .onAppear {
+                    Task { await setupVM.generateSandboxCredentials() }
+                }
             }
         }
     }
 }
 
-// MARK: - Sandbox Setup View
-struct SandboxSetupView: View {
-    @ObservedObject var viewModel: SetUpViewModel
-    
+// MARK: - Missing Key Instructions View
+struct MissingKeyInstructionsView: View {
     var body: some View {
-        Form {
-            Section(header: Text("Sandbox Configuration")) {
-                TextField("Primary Subscription Key", text: $viewModel.subscriptionKey)
-                
-                Button(action: {
-                    Task { await viewModel.generateSandboxCredentials() }
-                }) {
-                    Text("Provision API User & Key")
-                        .bold()
-                }
-                .disabled(viewModel.subscriptionKey.isEmpty)
-            }
+        VStack(spacing: 24) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 60))
+                .foregroundColor(.yellow)
             
-            if let error = viewModel.errorMessage {
-                Text(error).foregroundColor(.red)
+            Text("Missing Subscription Key")
+                .font(.title2)
+                .bold()
+            
+            VStack(alignment: .leading, spacing: 16) {
+                Text("To run this demo app, you must configure your Subscription Key:")
+                
+                HStack(alignment: .top) {
+                    Text("1.")
+                    Text("Open **MoMoConfig.swift** in Xcode.")
+                }
+                HStack(alignment: .top) {
+                    Text("2.")
+                    Text("Replace `YOUR_SUBSCRIPTION_KEY_HERE` with your primary key from the developer portal.")
+                }
+                HStack(alignment: .top) {
+                    Text("3.")
+                    Text("Rebuild and run the app.")
+                }
             }
+            .padding()
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(12)
+            
+            Spacer()
         }
-        .navigationTitle("MoMo Setup")
+        .padding(32)
+        .navigationTitle("Setup Required")
     }
 }
 
