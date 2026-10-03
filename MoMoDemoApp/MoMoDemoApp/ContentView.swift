@@ -120,6 +120,10 @@ struct MissingKeyInstructionsView: View {
 
 // MARK: - Checkout View
 struct CheckoutView: View {
+    enum Field {
+        case phone, amount, currency, payerMessage, payeeNote, deliveryNote
+    }
+    
     @StateObject private var viewModel: CheckoutViewModel
     @State private var phoneNumber: String = "46733123453"
     @State private var amount: String = "50.00"
@@ -127,6 +131,8 @@ struct CheckoutView: View {
     @State private var payerMessage: String = "Demo App Purchase"
     @State private var payeeNote: String = "Test Transaction"
     @State private var deliveryNote: String = ""
+    
+    @FocusState private var focusedField: Field?
     
     init(client: MoMoCollectionClient) {
         _viewModel = StateObject(wrappedValue: CheckoutViewModel(client: client))
@@ -149,15 +155,18 @@ struct CheckoutView: View {
                 VStack(spacing: 16) {
                     TextField("Phone Number", text: $phoneNumber)
                         .keyboardType(.phonePad)
+                        .focused($focusedField, equals: .phone)
                         .momoTextField(icon: "phone.fill")
                     
                     HStack(spacing: 16) {
                         TextField("Amount", text: $amount)
                             .keyboardType(.decimalPad)
+                            .focused($focusedField, equals: .amount)
                             .momoTextField(icon: "banknote.fill")
                         
                         TextField("Currency", text: $currency)
                             .autocapitalization(.allCharacters)
+                            .focused($focusedField, equals: .currency)
                             .frame(width: 80)
                             .momoTextField(icon: "dollarsign.circle.fill")
                     }
@@ -166,15 +175,19 @@ struct CheckoutView: View {
                 
                 VStack(spacing: 16) {
                     TextField("Payer Message", text: $payerMessage)
+                        .focused($focusedField, equals: .payerMessage)
                         .momoTextField(icon: "message.fill")
                     TextField("Payee Note", text: $payeeNote)
+                        .focused($focusedField, equals: .payeeNote)
                         .momoTextField(icon: "doc.text.fill")
                     TextField("Delivery Note (Optional)", text: $deliveryNote)
+                        .focused($focusedField, equals: .deliveryNote)
                         .momoTextField(icon: "shippingbox.fill")
                 }
                 .padding(.horizontal)
                 
                 Button(action: {
+                    focusedField = nil
                     Task { 
                         await viewModel.simulatePurchase(
                             phoneNumber: phoneNumber,
@@ -212,6 +225,15 @@ struct CheckoutView: View {
                 }
             }
             .padding(.bottom, 40)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    focusedField = nil
+                }
+            }
         }
         .background(MoMoTheme.background.edgesIgnoringSafeArea(.all))
         .navigationBarHidden(true)
