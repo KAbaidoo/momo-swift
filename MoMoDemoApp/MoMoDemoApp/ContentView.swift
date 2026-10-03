@@ -89,6 +89,11 @@ struct MissingKeyInstructionsView: View {
 struct CheckoutView: View {
     @StateObject private var viewModel: CheckoutViewModel
     @State private var phoneNumber: String = "46733123453" // Standard MoMo sandbox test number
+    @State private var amount: String = "50.00"
+    @State private var currency: String = "EUR"
+    @State private var payerMessage: String = "Demo App Purchase"
+    @State private var payeeNote: String = "Test Transaction"
+    @State private var deliveryNote: String = ""
     
     init(client: MoMoCollectionClient) {
         _viewModel = StateObject(wrappedValue: CheckoutViewModel(client: client))
@@ -96,16 +101,38 @@ struct CheckoutView: View {
     
     var body: some View {
         Form {
-            Section(header: Text("Checkout")) {
+            Section(header: Text("Payment Details")) {
                 TextField("Phone Number", text: $phoneNumber)
-                
+                    .keyboardType(.phonePad)
+                TextField("Amount", text: $amount)
+                    .keyboardType(.decimalPad)
+                TextField("Currency", text: $currency)
+                    .autocapitalization(.allCharacters)
+            }
+            
+            Section(header: Text("Notes & Messages")) {
+                TextField("Payer Message", text: $payerMessage)
+                TextField("Payee Note", text: $payeeNote)
+                TextField("Delivery Note (Optional)", text: $deliveryNote)
+            }
+            
+            Section {
                 Button(action: {
-                    Task { await viewModel.simulatePurchase(phoneNumber: phoneNumber, amount: "50.00") }
+                    Task { 
+                        await viewModel.simulatePurchase(
+                            phoneNumber: phoneNumber,
+                            amount: amount,
+                            currency: currency,
+                            payerMessage: payerMessage,
+                            payeeNote: payeeNote,
+                            deliveryNote: deliveryNote
+                        ) 
+                    }
                 }) {
                     if viewModel.isProcessing {
                         ProgressView().progressViewStyle(CircularProgressViewStyle())
                     } else {
-                        Text("Pay 50.00 EUR")
+                        Text("Pay \(amount) \(currency)")
                     }
                 }
                 .disabled(viewModel.isProcessing)
@@ -114,7 +141,7 @@ struct CheckoutView: View {
             Section(header: Text("Transaction Status")) {
                 Text(viewModel.transactionStatus)
                     .font(.callout)
-                    .foregroundColor(viewModel.transactionStatus.contains("Success") ? .green : .primary)
+                    .foregroundColor(viewModel.transactionStatus.contains("Success") ? .green : (viewModel.transactionStatus.contains("Error") || viewModel.transactionStatus.contains("Failed") ? .red : .primary))
             }
         }
         .navigationTitle("Demo Store")
