@@ -9,9 +9,12 @@ import SwiftUI
 
 @main
 struct MoMoDemoApp: App {
+    @StateObject private var container = AppDependencyContainer()
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(container)
         }
     }
 }

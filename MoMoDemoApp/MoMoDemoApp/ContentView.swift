@@ -6,16 +6,18 @@
 //
 
 import SwiftUI
+import MoMoCollections
 
 struct ContentView: View {
+    @EnvironmentObject var container: AppDependencyContainer
     @StateObject private var setupVM = SetUpViewModel()
     
     var body: some View {
         NavigationView {
             if setupVM.isKeyMissing {
                 MissingKeyInstructionsView()
-            } else if let credentials = setupVM.credentials {
-                CheckoutView(viewModel: CheckoutViewModel(credentials: credentials))
+            } else if container.credentials != nil, let client = container.makeCollectionClient() {
+                CheckoutView(client: client)
             } else {
                 VStack(spacing: 20) {
                     ProgressView()
@@ -32,7 +34,12 @@ struct ContentView: View {
                 }
                 .navigationTitle("Starting Demo")
                 .onAppear {
-                    Task { await setupVM.generateSandboxCredentials() }
+                    Task { 
+                        await setupVM.generateSandboxCredentials() 
+                        if let creds = setupVM.credentials {
+                            container.credentials = creds
+                        }
+                    }
                 }
             }
         }
@@ -80,8 +87,12 @@ struct MissingKeyInstructionsView: View {
 
 // MARK: - Checkout View
 struct CheckoutView: View {
-    @ObservedObject var viewModel: CheckoutViewModel
+    @StateObject private var viewModel: CheckoutViewModel
     @State private var phoneNumber: String = "46733123453" // Standard MoMo sandbox test number
+    
+    init(client: MoMoCollectionClient) {
+        _viewModel = StateObject(wrappedValue: CheckoutViewModel(client: client))
+    }
     
     var body: some View {
         Form {

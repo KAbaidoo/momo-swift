@@ -18,9 +18,8 @@ class CheckoutViewModel: ObservableObject {
     
     let client: MoMoCollectionClient
     
-    init(credentials: MoMoCredentials) {
-        
-        self.client = MoMoCollectionClient(credentials: credentials, environment: .sandbox)
+    init(client: MoMoCollectionClient) {
+        self.client = client
     }
     
     func simulatePurchase(phoneNumber: String, amount: String) async {
