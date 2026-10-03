@@ -26,6 +26,7 @@ public actor MoMoAPIClient{
             let decoder = JSONDecoder()
             return try decoder.decode(T.self, from: response.data)
         } catch  let error as DecodingError {
+            print("❌ DECODING ERROR for \(T.self): \(error)")
             throw MoMoError.decodingFailed(error)
         }
     }

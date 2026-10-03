@@ -82,7 +82,7 @@ public struct MoMoCollectionClient {
             let status = try await getTransactionStatus(referenceId: referenceId)
             
             switch status.status {
-            case .success, .failed:
+            case .success, .successful, .failed:
                 // Final state reached
                 return status
             case .pending:
