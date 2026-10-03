@@ -37,7 +37,7 @@ struct ContentView: View {
                     Task { 
                         await setupVM.generateSandboxCredentials() 
                         if let creds = setupVM.credentials {
-                            container.credentials = creds
+                            container.saveCredentials(creds)
                         }
                     }
                 }

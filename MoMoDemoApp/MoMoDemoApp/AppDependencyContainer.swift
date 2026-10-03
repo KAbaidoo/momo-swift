@@ -16,6 +16,15 @@ import Combine
 class AppDependencyContainer: ObservableObject {
     @Published var credentials: MoMoCredentials?
     
+    init() {
+        self.credentials = CredentialStorage.shared.loadCredentials()
+    }
+    
+    func saveCredentials(_ creds: MoMoCredentials) {
+        self.credentials = creds
+        try? CredentialStorage.shared.saveCredentials(creds)
+    }
+    
     // MARK: - Client Factories
     
     /// Creates a MoMoCollectionClient if credentials are available.
