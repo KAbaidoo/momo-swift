@@ -18,16 +18,23 @@ public class CredentialStorage {
     
     // Internal struct to make encoding/decoding easy
     private struct StorableCredentials: Codable {
-        let apiUser: String
-        let apiKey: String
-        let subscriptionKey: String
+        let collectionApiUser: String
+        let collectionApiKey: String
+        let collectionSubscriptionKey: String
+        
+        let disbursementApiUser: String
+        let disbursementApiKey: String
+        let disbursementSubscriptionKey: String
     }
     
-    public func saveCredentials(_ credentials: MoMoCredentials) throws {
+    public func saveCredentials(collection: MoMoCredentials, disbursement: MoMoCredentials) throws {
         let storable = StorableCredentials(
-            apiUser: credentials.apiUser,
-            apiKey: credentials.apiKey,
-            subscriptionKey: credentials.subscriptionKey
+            collectionApiUser: collection.apiUser,
+            collectionApiKey: collection.apiKey,
+            collectionSubscriptionKey: collection.subscriptionKey,
+            disbursementApiUser: disbursement.apiUser,
+            disbursementApiKey: disbursement.apiKey,
+            disbursementSubscriptionKey: disbursement.subscriptionKey
         )
         
         let data = try JSONEncoder().encode(storable)
@@ -52,7 +59,7 @@ public class CredentialStorage {
         }
     }
     
-    public func loadCredentials() -> MoMoCredentials? {
+    public func loadCredentials() -> (collection: MoMoCredentials, disbursement: MoMoCredentials)? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -70,11 +77,9 @@ public class CredentialStorage {
         
         do {
             let decoded = try JSONDecoder().decode(StorableCredentials.self, from: data)
-            return MoMoCredentials(
-                apiUser: decoded.apiUser,
-                apiKey: decoded.apiKey,
-                subscriptionKey: decoded.subscriptionKey
-            )
+            let colCreds = MoMoCredentials(apiUser: decoded.collectionApiUser, apiKey: decoded.collectionApiKey, subscriptionKey: decoded.collectionSubscriptionKey)
+            let disCreds = MoMoCredentials(apiUser: decoded.disbursementApiUser, apiKey: decoded.disbursementApiKey, subscriptionKey: decoded.disbursementSubscriptionKey)
+            return (collection: colCreds, disbursement: disCreds)
         } catch {
             return nil
         }

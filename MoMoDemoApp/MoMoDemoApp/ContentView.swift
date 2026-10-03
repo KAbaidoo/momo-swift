@@ -13,12 +13,29 @@ struct ContentView: View {
     @StateObject private var setupVM = SetUpViewModel()
     
     var body: some View {
-        NavigationView {
-            if setupVM.isKeyMissing {
+        if setupVM.isKeyMissing {
+            NavigationView {
                 MissingKeyInstructionsView()
-            } else if container.credentials != nil, let client = container.makeCollectionClient() {
-                CheckoutView(client: client)
-            } else {
+            }
+        } else if container.isReady, 
+                  let collectionClient = container.makeCollectionClient(),
+                  let disbursementClient = container.makeDisbursementClient() {
+            
+            TabView {
+                NavigationView {
+                    CheckoutView(client: collectionClient)
+                }
+                .tabItem {
+                    Label("Collections", systemImage: "arrow.down.circle.fill")
+                }
+                
+                DepositView(client: disbursementClient)
+                    .tabItem {
+                        Label("Disbursements", systemImage: "arrow.up.circle.fill")
+                    }
+            }
+        } else {
+            NavigationView {
                 VStack(spacing: 20) {
                     ProgressView()
                         .scaleEffect(1.5)
@@ -36,8 +53,8 @@ struct ContentView: View {
                 .onAppear {
                     Task { 
                         await setupVM.generateSandboxCredentials() 
-                        if let creds = setupVM.credentials {
-                            container.saveCredentials(creds)
+                        if let colCreds = setupVM.collectionCredentials, let disCreds = setupVM.disbursementCredentials {
+                            container.saveCredentials(collection: colCreds, disbursement: disCreds)
                         }
                     }
                 }
@@ -54,12 +71,12 @@ struct MissingKeyInstructionsView: View {
                 .font(.system(size: 60))
                 .foregroundColor(.yellow)
             
-            Text("Missing Subscription Key")
+            Text("Missing Subscription Keys")
                 .font(.title2)
                 .bold()
             
             VStack(alignment: .leading, spacing: 16) {
-                Text("To run this demo app, you must configure your Subscription Key:")
+                Text("To run this demo app, you must configure your Subscription Keys:")
                 
                 HStack(alignment: .top) {
                     Text("1.")
@@ -67,7 +84,7 @@ struct MissingKeyInstructionsView: View {
                 }
                 HStack(alignment: .top) {
                     Text("2.")
-                    Text("Replace `YOUR_SUBSCRIPTION_KEY_HERE` with your primary key from the developer portal.")
+                    Text("Replace `YOUR_COLLECTION_SUBSCRIPTION_KEY_HERE` and `YOUR_DISBURSEMENT_SUBSCRIPTION_KEY_HERE` with your primary keys from the developer portal.")
                 }
                 HStack(alignment: .top) {
                     Text("3.")

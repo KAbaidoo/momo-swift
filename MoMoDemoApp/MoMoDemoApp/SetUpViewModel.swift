@@ -11,13 +11,14 @@ import Combine
 
 @MainActor
 public class SetUpViewModel: ObservableObject {
-    @Published var subscriptionKey: String = MoMoConfig.subscriptionKey
-    @Published var credentials: MoMoCredentials?
+    @Published var collectionCredentials: MoMoCredentials?
+    @Published var disbursementCredentials: MoMoCredentials?
     @Published var errorMessage: String?
     @Published var isProvisioning: Bool = false
     
     var isKeyMissing: Bool {
-        subscriptionKey == "YOUR_SUBSCRIPTION_KEY_HERE" || subscriptionKey.isEmpty
+        MoMoConfig.collectionSubscriptionKey == "YOUR_COLLECTION_SUBSCRIPTION_KEY_HERE" || MoMoConfig.collectionSubscriptionKey.isEmpty ||
+        MoMoConfig.disbursementSubscriptionKey == "YOUR_DISBURSEMENT_SUBSCRIPTION_KEY_HERE" || MoMoConfig.disbursementSubscriptionKey.isEmpty
     }
     
     func generateSandboxCredentials() async {
@@ -26,12 +27,19 @@ public class SetUpViewModel: ObservableObject {
         isProvisioning = true
         self.errorMessage = nil
         
-        let provisioner = MoMoSandboxProvisioner(subscriptionKey: subscriptionKey)
-        
         do {
-            // Generates the UUID and fetches the API Key in one automated flow
-            let (apiUser, apiKey) = try await provisioner.createSandboxCredentials()
-            self.credentials = MoMoCredentials(apiUser: apiUser, apiKey: apiKey, subscriptionKey: subscriptionKey)
+            // 1. Provision Collection Credentials
+            let colProvisioner = MoMoSandboxProvisioner(subscriptionKey: MoMoConfig.collectionSubscriptionKey)
+            let (colUser, colKey) = try await colProvisioner.createSandboxCredentials()
+            let colCreds = MoMoCredentials(apiUser: colUser, apiKey: colKey, subscriptionKey: MoMoConfig.collectionSubscriptionKey)
+            
+            // 2. Provision Disbursement Credentials
+            let disProvisioner = MoMoSandboxProvisioner(subscriptionKey: MoMoConfig.disbursementSubscriptionKey)
+            let (disUser, disKey) = try await disProvisioner.createSandboxCredentials()
+            let disCreds = MoMoCredentials(apiUser: disUser, apiKey: disKey, subscriptionKey: MoMoConfig.disbursementSubscriptionKey)
+            
+            self.collectionCredentials = colCreds
+            self.disbursementCredentials = disCreds
         } catch {
             self.errorMessage = error.localizedDescription
         }

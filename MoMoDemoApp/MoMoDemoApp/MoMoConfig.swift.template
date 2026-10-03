@@ -6,5 +6,6 @@
 import Foundation
 
 enum MoMoConfig {
-    static let subscriptionKey = "YOUR_SUBSCRIPTION_KEY_HERE"
+    static let collectionSubscriptionKey = "YOUR_COLLECTION_SUBSCRIPTION_KEY_HERE"
+    static let disbursementSubscriptionKey = "YOUR_DISBURSEMENT_SUBSCRIPTION_KEY_HERE"
 }
