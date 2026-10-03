@@ -12,7 +12,7 @@ extension MoMoCollectionClient {
     /// Initiates a Request to Withdraw transaction.
     public func requestToWithdraw(payload: RequestToWithdrawRequest, referenceId: UUID = UUID(), callbackURL: String? = nil) async throws -> String {
         let token = try await tokenProvider.getValidToken()
-        let uuidString = referenceId.uuidString
+        let uuidString = referenceId.uuidString.lowercased()
         let endpoint = WithdrawalEndpoint.initiate(referenceId: uuidString, payload: payload, callbackURL: callbackURL)
         
         try await client.execute(endpoint, bearerToken: token)
@@ -41,6 +41,6 @@ extension MoMoCollectionClient {
                 return status
             }
         }
-        throw MoMoError.unexpectedResponse
+        throw MoMoError.unexpectedResponse(statusCode: -1, message: "Non-HTTP URLResponse")
     }
 }

@@ -26,6 +26,7 @@ public actor MoMoAPIClient{
             let decoder = JSONDecoder()
             return try decoder.decode(T.self, from: response.data)
         } catch  let error as DecodingError {
+            print("❌ DECODING ERROR for \(T.self): \(error)")
             throw MoMoError.decodingFailed(error)
         }
     }
@@ -62,6 +63,15 @@ public actor MoMoAPIClient{
         
         request.httpBody = try endpoint.body()
         
+        
+        print("\n🚀 --- OUTGOING MOMO REQUEST ---")
+        print("\(request.httpMethod ?? "GET") \(request.url?.absoluteString ?? "")")
+        print("HEADERS: \(request.allHTTPHeaderFields ?? [:])")
+        if let body = request.httpBody, let jsonString = String(data: body, encoding: .utf8) {
+            print("BODY: \(jsonString)")
+        }
+        print("--------------------------------\n")
+        
         let (data, response): (Data, URLResponse)
         
         do {
@@ -73,28 +83,36 @@ public actor MoMoAPIClient{
         }
         
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw MoMoError.unexpectedResponse
+            throw MoMoError.unexpectedResponse(statusCode: -1, message: "Non-HTTP URLResponse")
         }
-        
+        print("\n📥 --- INCOMING MOMO RESPONSE ---")
+        print("STATUS: \(httpResponse.statusCode)")
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("BODY: \(responseString)")
+        }
+        print("---------------------------------\n")
         try validate(httpResponse: httpResponse, data: data)
-                
+        
         return (data, httpResponse)
     }
     
     private func validate(httpResponse: HTTPURLResponse, data: Data) throws {
-            switch httpResponse.statusCode {
-            case 200...299:
-                return // Success cases (200 OK, 201 Created, 202 Accepted)
-            case 401:
-                throw MoMoError.unauthorized(message: String(data: data, encoding: .utf8) ?? "Unknown")
-            case 404:
-                throw MoMoError.resourceNotFound(message: String(data: data, encoding: .utf8) ?? "Unknown")
-            case 409:
-                throw MoMoError.conflict(message: String(data: data, encoding: .utf8) ?? "Duplicate request")
-            case 500...599:
-                throw MoMoError.serverError(statusCode: httpResponse.statusCode)
-            default:
-                throw MoMoError.unexpectedResponse
-            }
+        let responseString = String(data: data, encoding: .utf8) ?? "Unknown"
+        switch httpResponse.statusCode {
+        case 200...299:
+            return
+        case 400:
+            throw MoMoError.badRequest(message: responseString)
+        case 401:
+            throw MoMoError.unauthorized(message: responseString)
+        case 404:
+            throw MoMoError.resourceNotFound(message: responseString)
+        case 409:
+            throw MoMoError.conflict(message: responseString)
+        case 500...599:
+            throw MoMoError.serverError(statusCode: httpResponse.statusCode)
+        default:
+            throw MoMoError.unexpectedResponse(statusCode: httpResponse.statusCode, message: responseString)
         }
+    }
 }

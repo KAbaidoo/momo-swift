@@ -40,7 +40,7 @@ public struct MoMoCollectionClient {
         callbackURL: String? = nil
     ) async throws -> String {
         let token = try await tokenProvider.getValidToken()
-        let uuidString = referenceId.uuidString
+        let uuidString = referenceId.uuidString.lowercased()
         
         let endpoint = RequestToPayEndpoint.initiate(
             referenceId: uuidString,
@@ -82,7 +82,7 @@ public struct MoMoCollectionClient {
             let status = try await getTransactionStatus(referenceId: referenceId)
             
             switch status.status {
-            case .success, .failed:
+            case .successful, .failed:
                 // Final state reached
                 return status
             case .pending:
@@ -91,7 +91,7 @@ public struct MoMoCollectionClient {
             }
         }
         
-        throw MoMoError.unexpectedResponse // Or a custom .timeout error
+        throw MoMoError.unexpectedResponse(statusCode: -1, message: "Non-HTTP URLResponse")// Or a custom .timeout error
     }
     
     /// Sends a delivery notification for a successfully completed RequestToPay transaction.

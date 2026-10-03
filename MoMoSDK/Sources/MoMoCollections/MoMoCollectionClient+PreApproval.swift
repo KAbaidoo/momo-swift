@@ -13,7 +13,7 @@ extension MoMoCollectionClient {
     /// Initiates an auto-debit Pre-Approval mandate and returns the reference ID
     public func requestPreApproval(payload: PreApprovalRequest, referenceId: UUID = UUID(), callbackURL: String? = nil) async throws -> String {
         let token = try await tokenProvider.getValidToken()
-        let uuidString = referenceId.uuidString
+        let uuidString = referenceId.uuidString.lowercased()
         let endpoint = PreApprovalEndpoint.initiate(referenceId: uuidString, payload: payload, callbackURL: callbackURL)
         
         try await client.execute(endpoint, bearerToken: token)
@@ -49,7 +49,7 @@ extension MoMoCollectionClient {
             }
         }
         
-        throw MoMoError.unexpectedResponse
+        throw MoMoError.unexpectedResponse(statusCode: -1, message: "Non-HTTP URLResponse")
     }
     
     /// Fetches all active Pre-Approval mandates targeting your service for a specific consumer.

@@ -1,0 +1,11 @@
+// MoMoConfig.swift.template
+// INSTRUCTIONS: 
+// 1. Rename this file to 'MoMoConfig.swift'
+// 2. Paste your Subscription Key from the MoMo Developer Portal below.
+
+import Foundation
+
+enum MoMoConfig {
+    static let collectionSubscriptionKey = "YOUR_COLLECTION_SUBSCRIPTION_KEY_HERE"
+    static let disbursementSubscriptionKey = "YOUR_DISBURSEMENT_SUBSCRIPTION_KEY_HERE"
+}

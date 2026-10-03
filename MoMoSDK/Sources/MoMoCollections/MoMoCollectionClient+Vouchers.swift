@@ -13,7 +13,7 @@ extension MoMoCollectionClient {
     /// Creates a new voucher and returns the generated reference ID.
     public func createVoucher(payload: VoucherRequest, referenceId: UUID = UUID(), callbackURL: String? = nil) async throws -> String {
         let token = try await tokenProvider.getValidToken()
-        let uuidString = referenceId.uuidString
+        let uuidString = referenceId.uuidString.lowercased()
         let endpoint = VoucherEndpoint.create(referenceId: uuidString, payload: payload, callbackURL: callbackURL)
         
         try await client.execute(endpoint, bearerToken: token)

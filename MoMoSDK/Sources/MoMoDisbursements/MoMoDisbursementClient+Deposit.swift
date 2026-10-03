@@ -13,7 +13,7 @@ extension MoMoDisbursementClient {
     /// Initiates a Deposit to a MoMo Wallet and returns the reference ID.
     public func deposit(payload: DepositRequest, referenceId: UUID = UUID(), callbackURL: String? = nil) async throws -> String {
         let token = try await tokenProvider.getValidToken()
-        let uuidString = referenceId.uuidString
+        let uuidString = referenceId.uuidString.lowercased()
         let endpoint = DepositEndpoint.initiate(referenceId: uuidString, payload: payload, callbackURL: callbackURL)
         
         try await client.execute(endpoint, bearerToken: token)
@@ -46,6 +46,6 @@ extension MoMoDisbursementClient {
                 if status.status != .pending { return status }
             }
             
-            throw MoMoError.unexpectedResponse
+            throw MoMoError.unexpectedResponse(statusCode: -1, message: "Non-HTTP URLResponse")
         }
 }

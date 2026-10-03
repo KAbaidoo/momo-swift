@@ -1,0 +1,7 @@
+# Ignore developer secrets in the demo app
+MoMoConfig.swift
+
+# Xcode/macOS
+.DS_Store
+xcuserdata/
+*.xcuserstate

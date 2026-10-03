@@ -13,7 +13,7 @@ extension MoMoDisbursementClient {
     /// Initiates a Refund for a previous disbursement transaction.
     public func refund(payload: RefundRequest, referenceId: UUID = UUID(), callbackURL: String? = nil) async throws -> String {
         let token = try await tokenProvider.getValidToken()
-        let uuidString = referenceId.uuidString
+        let uuidString = referenceId.uuidString.lowercased()
         let endpoint = RefundEndpoint.initiate(referenceId: uuidString, payload: payload, callbackURL: callbackURL)
         
         try await client.execute(endpoint, bearerToken: token)
@@ -49,6 +49,6 @@ extension MoMoDisbursementClient {
             if status.status != .pending { return status }
         }
         
-        throw MoMoError.unexpectedResponse
+        throw MoMoError.unexpectedResponse(statusCode: -1, message: "Non-HTTP URLResponse")
     }
 }
