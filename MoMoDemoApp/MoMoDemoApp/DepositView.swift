@@ -21,47 +21,84 @@ struct DepositView: View {
     }
     
     var body: some View {
-        NavigationView {
-            Form {
-                Section(header: Text("Recipient Details")) {
-                    TextField("Phone Number", text: $phoneNumber).keyboardType(.phonePad)
-                    TextField("Amount", text: $amount).keyboardType(.decimalPad)
-                    TextField("Currency", text: $currency).autocapitalization(.allCharacters)
+        ScrollView {
+            VStack(spacing: 24) {
+                // Header Logo
+                VStack(spacing: 8) {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(MoMoTheme.yellow)
+                    Text("Disbursements")
+                        .font(.title)
+                        .fontWeight(.bold)
                 }
+                .padding(.top, 24)
                 
-                Section(header: Text("Notes")) {
-                    TextField("Payer Message", text: $payerMessage)
-                    TextField("Payee Note", text: $payeeNote)
-                }
-                
-                Section {
-                    Button(action: {
-                        Task {
-                            await viewModel.simulateDeposit(
-                                phoneNumber: phoneNumber,
-                                amount: amount,
-                                currency: currency,
-                                payerMessage: payerMessage,
-                                payeeNote: payeeNote
-                            )
-                        }
-                    }) {
-                        if viewModel.isProcessing {
-                            ProgressView().progressViewStyle(CircularProgressViewStyle())
-                        } else {
-                            Text("Deposit \(amount) \(currency)")
-                        }
+                VStack(spacing: 16) {
+                    TextField("Phone Number", text: $phoneNumber)
+                        .keyboardType(.phonePad)
+                        .momoTextField(icon: "phone.fill")
+                    
+                    HStack(spacing: 16) {
+                        TextField("Amount", text: $amount)
+                            .keyboardType(.decimalPad)
+                            .momoTextField(icon: "banknote.fill")
+                        
+                        TextField("Currency", text: $currency)
+                            .autocapitalization(.allCharacters)
+                            .frame(width: 80)
+                            .momoTextField(icon: "dollarsign.circle.fill")
                     }
-                    .disabled(viewModel.isProcessing)
                 }
+                .padding(.horizontal)
                 
-                Section(header: Text("Transaction Status")) {
-                    Text(viewModel.transactionStatus)
-                        .font(.callout)
-                        .foregroundColor(viewModel.transactionStatus.contains("Success") ? .green : (viewModel.transactionStatus.contains("Error") || viewModel.transactionStatus.contains("Failed") ? .red : .primary))
+                VStack(spacing: 16) {
+                    TextField("Payer Message", text: $payerMessage)
+                        .momoTextField(icon: "message.fill")
+                    TextField("Payee Note", text: $payeeNote)
+                        .momoTextField(icon: "doc.text.fill")
+                }
+                .padding(.horizontal)
+                
+                Button(action: {
+                    Task {
+                        await viewModel.simulateDeposit(
+                            phoneNumber: phoneNumber,
+                            amount: amount,
+                            currency: currency,
+                            payerMessage: payerMessage,
+                            payeeNote: payeeNote
+                        )
+                    }
+                }) {
+                    Text("Deposit \(amount) \(currency)")
+                }
+                .buttonStyle(PrimaryButtonStyle(isLoading: viewModel.isProcessing))
+                .disabled(viewModel.isProcessing)
+                .padding(.horizontal)
+                .padding(.top, 16)
+                
+                if viewModel.transactionStatus != "Idle" {
+                    VStack(spacing: 8) {
+                        Text("Transaction Status")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Text(viewModel.transactionStatus)
+                            .font(.body)
+                            .bold()
+                            .foregroundColor(viewModel.transactionStatus.contains("Success") ? .green : (viewModel.transactionStatus.contains("Error") || viewModel.transactionStatus.contains("Failed") ? .red : .primary))
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(Color(UIColor.secondarySystemGroupedBackground))
+                    .cornerRadius(12)
+                    .padding(.horizontal)
                 }
             }
-            .navigationTitle("Disbursements")
+            .padding(.bottom, 40)
         }
+        .background(MoMoTheme.background.edgesIgnoringSafeArea(.all))
+        .navigationBarHidden(true)
     }
 }

@@ -34,28 +34,44 @@ struct ContentView: View {
                         Label("Disbursements", systemImage: "arrow.up.circle.fill")
                     }
             }
+            .accentColor(MoMoTheme.darkBlue)
         } else {
-            NavigationView {
-                VStack(spacing: 20) {
-                    ProgressView()
-                        .scaleEffect(1.5)
-                    Text("Provisioning Sandbox...")
-                        .foregroundColor(.secondary)
+            ZStack {
+                MoMoTheme.background.edgesIgnoringSafeArea(.all)
+                
+                VStack(spacing: 32) {
+                    Image(systemName: "bolt.horizontal.circle.fill")
+                        .font(.system(size: 80))
+                        .foregroundColor(MoMoTheme.yellow)
                     
-                    if let error = setupVM.errorMessage {
-                        Text(error)
+                    Text("MoMo SDK Demo")
+                        .font(.largeTitle)
+                        .fontWeight(.heavy)
+                        .foregroundColor(MoMoTheme.darkBlue)
+                }
+                
+                if setupVM.isProvisioning {
+                    MoMoLoadingOverlay(message: "Provisioning Sandbox...")
+                } else if let error = setupVM.errorMessage {
+                    VStack {
+                        Spacer()
+                        Text("Setup Failed")
+                            .font(.headline)
                             .foregroundColor(.red)
+                        Text(error)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
                             .padding()
                     }
+                    .padding(.bottom, 40)
                 }
-                .navigationTitle("Starting Demo")
-                .onAppear {
-                    Task { 
-                        await setupVM.generateSandboxCredentials() 
-                        if let colCreds = setupVM.collectionCredentials, let disCreds = setupVM.disbursementCredentials {
-                            container.saveCredentials(collection: colCreds, disbursement: disCreds)
-                        }
+            }
+            .onAppear {
+                Task { 
+                    await setupVM.generateSandboxCredentials() 
+                    if let colCreds = setupVM.collectionCredentials, let disCreds = setupVM.disbursementCredentials {
+                        container.saveCredentials(collection: colCreds, disbursement: disCreds)
                     }
                 }
             }
@@ -105,7 +121,7 @@ struct MissingKeyInstructionsView: View {
 // MARK: - Checkout View
 struct CheckoutView: View {
     @StateObject private var viewModel: CheckoutViewModel
-    @State private var phoneNumber: String = "46733123453" // Standard MoMo sandbox test number
+    @State private var phoneNumber: String = "46733123453"
     @State private var amount: String = "50.00"
     @State private var currency: String = "EUR"
     @State private var payerMessage: String = "Demo App Purchase"
@@ -117,23 +133,47 @@ struct CheckoutView: View {
     }
     
     var body: some View {
-        Form {
-            Section(header: Text("Payment Details")) {
-                TextField("Phone Number", text: $phoneNumber)
-                    .keyboardType(.phonePad)
-                TextField("Amount", text: $amount)
-                    .keyboardType(.decimalPad)
-                TextField("Currency", text: $currency)
-                    .autocapitalization(.allCharacters)
-            }
-            
-            Section(header: Text("Notes & Messages")) {
-                TextField("Payer Message", text: $payerMessage)
-                TextField("Payee Note", text: $payeeNote)
-                TextField("Delivery Note (Optional)", text: $deliveryNote)
-            }
-            
-            Section {
+        ScrollView {
+            VStack(spacing: 24) {
+                // Header Logo
+                VStack(spacing: 8) {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(MoMoTheme.yellow)
+                    Text("Collections")
+                        .font(.title)
+                        .fontWeight(.bold)
+                }
+                .padding(.top, 24)
+                
+                VStack(spacing: 16) {
+                    TextField("Phone Number", text: $phoneNumber)
+                        .keyboardType(.phonePad)
+                        .momoTextField(icon: "phone.fill")
+                    
+                    HStack(spacing: 16) {
+                        TextField("Amount", text: $amount)
+                            .keyboardType(.decimalPad)
+                            .momoTextField(icon: "banknote.fill")
+                        
+                        TextField("Currency", text: $currency)
+                            .autocapitalization(.allCharacters)
+                            .frame(width: 80)
+                            .momoTextField(icon: "dollarsign.circle.fill")
+                    }
+                }
+                .padding(.horizontal)
+                
+                VStack(spacing: 16) {
+                    TextField("Payer Message", text: $payerMessage)
+                        .momoTextField(icon: "message.fill")
+                    TextField("Payee Note", text: $payeeNote)
+                        .momoTextField(icon: "doc.text.fill")
+                    TextField("Delivery Note (Optional)", text: $deliveryNote)
+                        .momoTextField(icon: "shippingbox.fill")
+                }
+                .padding(.horizontal)
+                
                 Button(action: {
                     Task { 
                         await viewModel.simulatePurchase(
@@ -146,22 +186,35 @@ struct CheckoutView: View {
                         ) 
                     }
                 }) {
-                    if viewModel.isProcessing {
-                        ProgressView().progressViewStyle(CircularProgressViewStyle())
-                    } else {
-                        Text("Pay \(amount) \(currency)")
-                    }
+                    Text("Pay \(amount) \(currency)")
                 }
+                .buttonStyle(PrimaryButtonStyle(isLoading: viewModel.isProcessing))
                 .disabled(viewModel.isProcessing)
+                .padding(.horizontal)
+                .padding(.top, 16)
+                
+                if viewModel.transactionStatus != "Idle" {
+                    VStack(spacing: 8) {
+                        Text("Transaction Status")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Text(viewModel.transactionStatus)
+                            .font(.body)
+                            .bold()
+                            .foregroundColor(viewModel.transactionStatus.contains("Success") ? .green : (viewModel.transactionStatus.contains("Error") || viewModel.transactionStatus.contains("Failed") ? .red : .primary))
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(Color(UIColor.secondarySystemGroupedBackground))
+                    .cornerRadius(12)
+                    .padding(.horizontal)
+                }
             }
-            
-            Section(header: Text("Transaction Status")) {
-                Text(viewModel.transactionStatus)
-                    .font(.callout)
-                    .foregroundColor(viewModel.transactionStatus.contains("Success") ? .green : (viewModel.transactionStatus.contains("Error") || viewModel.transactionStatus.contains("Failed") ? .red : .primary))
-            }
+            .padding(.bottom, 40)
         }
-        .navigationTitle("Demo Store")
+        .background(MoMoTheme.background.edgesIgnoringSafeArea(.all))
+        .navigationBarHidden(true)
     }
 }
 
