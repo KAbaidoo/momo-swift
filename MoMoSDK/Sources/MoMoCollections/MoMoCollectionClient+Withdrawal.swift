@@ -1,46 +1,28 @@
-//
-//  MoMoCollectionClient+Withdrawal.swift
-//  MoMoSDK
-//
-//  Created by kobby on 09/09/2026.
-//
-
 import Foundation
 import MoMoCore
 
 extension MoMoCollectionClient {
-    /// Initiates a Request to Withdraw transaction.
-    public func requestToWithdraw(payload: RequestToWithdrawRequest, referenceId: UUID = UUID(), callbackURL: String? = nil) async throws -> String {
-        let token = try await tokenProvider.getValidToken()
-        let uuidString = referenceId.uuidString.lowercased()
-        let endpoint = WithdrawalEndpoint.initiate(referenceId: uuidString, payload: payload, callbackURL: callbackURL)
-        
-        try await client.execute(endpoint, bearerToken: token)
-        return uuidString
+    public func requestToWithdraw(payload: RequestToWithdrawRequest, referenceId: UUID = UUID(), callbackURL: String? = nil, version: WithdrawalVersion = .v1) async throws -> String {
+        try CollectionValidation.money(payload.amount, payload.currency)
+        try CollectionValidation.party(payload.payer)
+        try MoMoValidation.callbackURL(callbackURL)
+        try MoMoValidation.referenceId(referenceId.uuidString)
+        let id = referenceId.uuidString.lowercased()
+        return try await submit(WithdrawalEndpoint.initiate(referenceId: id, payload: payload, callbackURL: callbackURL, version: version), referenceId: id)
     }
-    
-    /// Fetches the status of a Request to Withdraw transaction.
     public func getWithdrawalStatus(referenceId: String) async throws -> RequestToWithdrawStatus {
-        let token = try await tokenProvider.getValidToken()
-        let endpoint = WithdrawalEndpoint.status(referenceId: referenceId)
-        
-        return try await client.execute(endpoint, responseType: RequestToWithdrawStatus.self, bearerToken: token)
+        try await client.executeAuthenticated(WithdrawalEndpoint.status(referenceId: referenceId), responseType: RequestToWithdrawStatus.self, tokenProvider: tokenProvider)
     }
-    
-    /// Initiates a Withdrawal and then polls until the transaction reaches a final state
+    public func waitForWithdrawal(referenceId: String, policy: MoMoPollingPolicy = .init()) async throws -> RequestToWithdrawStatus {
+        try await MoMoPoller.poll(referenceId: referenceId, policy: policy, operation: { try await getWithdrawalStatus(referenceId: referenceId) }, isComplete: { $0.status.isTerminal })
+    }
+    public func requestToWithdrawAndWait(payload: RequestToWithdrawRequest, policy: MoMoPollingPolicy, referenceId: UUID = UUID(), callbackURL: String? = nil, version: WithdrawalVersion = .v1) async throws -> RequestToWithdrawStatus {
+        try policy.validate()
+        let id = try await requestToWithdraw(payload: payload, referenceId: referenceId, callbackURL: callbackURL, version: version)
+        return try await waitForWithdrawal(referenceId: id, policy: policy)
+    }
+    @available(iOS 16, macOS 13, watchOS 9, tvOS 16, *)
     public func requestToWithdrawAndWait(payload: RequestToWithdrawRequest, maxAttempts: Int = 12, delayBetweenAttempts: Duration = .seconds(5)) async throws -> RequestToWithdrawStatus {
-        let referenceId = try await requestToWithdraw(payload: payload)
-        var attempts = 0
-        
-        while attempts < maxAttempts {
-            attempts += 1
-            try await Task.sleep(for: delayBetweenAttempts)
-            
-            let status = try await getWithdrawalStatus(referenceId: referenceId)
-            if status.status != .pending {
-                return status
-            }
-        }
-        throw MoMoError.unexpectedResponse(statusCode: -1, message: "Non-HTTP URLResponse")
+        try await requestToWithdrawAndWait(payload: payload, policy: Self.legacyPolicy(maxAttempts, delayBetweenAttempts))
     }
 }

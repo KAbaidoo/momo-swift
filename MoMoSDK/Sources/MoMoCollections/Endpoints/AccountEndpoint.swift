@@ -1,34 +1,18 @@
-//
-//  AccountEndpoint.swift
-//  MoMoSDK
-//
-//  Created by kobby on 07/09/2026.
-//
-
 import Foundation
 import MoMoCore
 
-enum AccountEndpoint: MoMoEndpoint{
+enum AccountEndpoint: MoMoEndpoint {
     case getBalance
+    case currencyBalance(String)
     case validateAccountHolder(party: Party)
-    case getBasicUserInfo(party: Party)
-    
+    case getBasicUserInfo(identity: CollectionAccountIdentity)
     var path: String {
         switch self {
-        case .getBalance:
-            return "/collection/v1_0/account/balance"
-        case .validateAccountHolder(let party):
-            let type = party.partyIdType.rawValue.lowercased()
-            return "/collection/v1_0/accountholder/\(type)/\(party.partyId)/active"
-        case .getBasicUserInfo(let party): // New Path
-            let type = party.partyIdType.rawValue.lowercased()
-            return "/collection/v1_0/accountholder/\(type)/\(party.partyId)/basicuserinfo"
+        case .getBalance: return "/collection/v1_0/account/balance"
+        case .currencyBalance(let currency): return "/collection/v1_0/account/balance/\(MoMoPath.segment(currency))"
+        case .validateAccountHolder(let party): return "/collection/v1_0/accountholder/\(party.partyIdType.rawValue.lowercased())/\(MoMoPath.segment(party.partyId))/active"
+        case .getBasicUserInfo(let identity): return "/collection/v1_0/accountholder/\(identity.kind.rawValue)/\(MoMoPath.segment(identity.value))/basicuserinfo"
         }
-        
     }
-    
-    var method: MoMoCore.HTTPMethod {
-        return .get
-    }
-    
+    var method: HTTPMethod { .get }
 }

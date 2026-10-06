@@ -1,33 +1,16 @@
-//
-//  DisbursementAccountEndpoint.swift
-//  MoMoSDK
-//
-//  Created by kobby on 21/09/2026.
-//
-
-
-import Foundation
 import MoMoCore
 
 enum DisbursementAccountEndpoint: MoMoEndpoint {
-    case getBalance
+    case getBalance(currency: String?)
     case validateAccountHolder(party: Party)
-    case getBasicUserInfo(party: Party)
-    
+    case getBasicUserInfo(identity: DisbursementAccountIdentity)
     var path: String {
         switch self {
-        case .getBalance:
-            return "/disbursement/v1_0/account/balance"
-        case .validateAccountHolder(let party):
-            let type = party.partyIdType.rawValue.lowercased()
-            return "/disbursement/v1_0/accountholder/\(type)/\(party.partyId)/active"
-        case .getBasicUserInfo(let party):
-            let type = party.partyIdType.rawValue.lowercased()
-            return "/disbursement/v1_0/accountholder/\(type)/\(party.partyId)/basicuserinfo"
+        case .getBalance(let currency): return "/disbursement/v1_0/account/balance" + (currency.map { "/" + MoMoPath.segment($0) } ?? "")
+        case .validateAccountHolder(let party): return accountPath(party) + "/active"
+        case .getBasicUserInfo(let identity): return "/disbursement/v1_0/accountholder/\(identity.kind.rawValue)/\(MoMoPath.segment(identity.value))/basicuserinfo"
         }
     }
-    
-    var method: HTTPMethod {
-        return .get
-    }
+    private func accountPath(_ party: Party) -> String { "/disbursement/v1_0/accountholder/\(party.partyIdType.rawValue.lowercased())/\(MoMoPath.segment(party.partyId))" }
+    var method: HTTPMethod { .get }
 }

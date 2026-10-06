@@ -45,17 +45,20 @@ public class CredentialStorage {
             kSecAttrAccount as String: "momo-sandbox-account"
         ]
         
-        // Delete existing item if it exists
-        SecItemDelete(query as CFDictionary)
-        
-        // Add new item
+        // Updating first preserves the existing credentials if persistence fails.
+        let updateStatus = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        if updateStatus == errSecSuccess { return }
+        guard updateStatus == errSecItemNotFound else {
+            throw NSError(domain: "KeychainError", code: Int(updateStatus), userInfo: [NSLocalizedDescriptionKey: "Could not update saved sandbox credentials."])
+        }
+
         var attributes = query
         attributes[kSecValueData as String] = data
         attributes[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         
         let status = SecItemAdd(attributes as CFDictionary, nil)
         guard status == errSecSuccess else {
-            throw NSError(domain: "KeychainError", code: Int(status), userInfo: nil)
+            throw NSError(domain: "KeychainError", code: Int(status), userInfo: [NSLocalizedDescriptionKey: "Could not save sandbox credentials."])
         }
     }
     

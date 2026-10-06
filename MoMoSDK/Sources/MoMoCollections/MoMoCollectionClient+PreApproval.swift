@@ -1,70 +1,41 @@
-//
-//  MoMoCollectionClient+PreApproval.swift
-//  MoMoSDK
-//
-//  Created by kobby on 07/09/2026.
-//
-
 import Foundation
 import MoMoCore
 
 extension MoMoCollectionClient {
-    
-    /// Initiates an auto-debit Pre-Approval mandate and returns the reference ID
     public func requestPreApproval(payload: PreApprovalRequest, referenceId: UUID = UUID(), callbackURL: String? = nil) async throws -> String {
-        let token = try await tokenProvider.getValidToken()
-        let uuidString = referenceId.uuidString.lowercased()
-        let endpoint = PreApprovalEndpoint.initiate(referenceId: uuidString, payload: payload, callbackURL: callbackURL)
-        
-        try await client.execute(endpoint, bearerToken: token)
-        return uuidString
-        
+        try CollectionValidation.party(payload.payer)
+        try CollectionValidation.currency(payload.payerCurrency)
+        try MoMoValidation.callbackURL(callbackURL)
+        try MoMoValidation.referenceId(referenceId.uuidString)
+        guard payload.validityTime > 0 else { throw CollectionValidationError.invalidValidity }
+        let id = referenceId.uuidString.lowercased()
+        return try await submit(PreApprovalEndpoint.initiate(referenceId: id, payload: payload, callbackURL: callbackURL), referenceId: id)
     }
-    
-    /// Fetches the status of a specific Pre-Approval mandate.
     public func getPreApprovalStatus(referenceId: String) async throws -> PreApprovalStatus {
-        let token = try await tokenProvider.getValidToken()
-        let endpoint = PreApprovalEndpoint.status(referenceId: referenceId)
-        
-        return try await client.execute(endpoint, responseType: PreApprovalStatus.self, bearerToken: token)
+        try await client.executeAuthenticated(PreApprovalEndpoint.status(referenceId: referenceId), responseType: PreApprovalStatus.self, tokenProvider: tokenProvider)
     }
-    
-    /// Initiates a Pre-Approval and automatically polls until the user approves, rejects, or the request times out.
-    public func requestPreApprovalAndWait(
-        payload: PreApprovalRequest,
-        maxAttempts: Int = 12,
-        delayBetweenAttempts: Duration = .seconds(5)
-    ) async throws -> PreApprovalStatus {
-        let referenceId = try await requestPreApproval(payload: payload)
-        var attempts = 0
-        
-        while attempts < maxAttempts {
-            attempts += 1
-            try await Task.sleep(for: delayBetweenAttempts)
-            
-            let status = try await getPreApprovalStatus(referenceId: referenceId)
-            
-            if status.transactionStatus != .pending {
-                return status
-            }
-        }
-        
-        throw MoMoError.unexpectedResponse(statusCode: -1, message: "Non-HTTP URLResponse")
+    public func waitForPreApproval(referenceId: String, policy: MoMoPollingPolicy = .init()) async throws -> PreApprovalStatus {
+        try await MoMoPoller.poll(referenceId: referenceId, policy: policy, operation: { try await getPreApprovalStatus(referenceId: referenceId) }, isComplete: { $0.status.isTerminal })
     }
-    
-    /// Fetches all active Pre-Approval mandates targeting your service for a specific consumer.
-    public func getPreApprovals(for party: Party) async throws -> [PreApprovalStatus] {
-        let token = try await tokenProvider.getValidToken()
-        let endpoint = PreApprovalEndpoint.list(party: party)
-        
-        return try await client.execute(endpoint, responseType: [PreApprovalStatus].self, bearerToken: token)
+    public func requestPreApprovalAndWait(payload: PreApprovalRequest, policy: MoMoPollingPolicy, referenceId: UUID = UUID(), callbackURL: String? = nil) async throws -> PreApprovalStatus {
+        try policy.validate()
+        let id = try await requestPreApproval(payload: payload, referenceId: referenceId, callbackURL: callbackURL)
+        return try await waitForPreApproval(referenceId: id, policy: policy)
     }
-    
-    /// Cancels an existing Pre-Approval mandate.
-    public func cancelPreApproval(referenceId: String) async throws {
-        let token = try await tokenProvider.getValidToken()
-        let endpoint = PreApprovalEndpoint.cancel(referenceId: referenceId)
-        
-        try await client.execute(endpoint, bearerToken: token)
+    @available(iOS 16, macOS 13, watchOS 9, tvOS 16, *)
+    public func requestPreApprovalAndWait(payload: PreApprovalRequest, maxAttempts: Int = 12, delayBetweenAttempts: Duration = .seconds(5)) async throws -> PreApprovalStatus {
+        try await requestPreApprovalAndWait(payload: payload, policy: Self.legacyPolicy(maxAttempts, delayBetweenAttempts))
     }
+    public func getPreApprovals(identity: CollectionAccountIdentity) async throws -> [ApprovedPreApproval] {
+        try await client.executeAuthenticated(PreApprovalEndpoint.list(identity: identity), responseType: [ApprovedPreApproval].self, tokenProvider: tokenProvider)
+    }
+    public func getPreApprovals(for party: Party) async throws -> [ApprovedPreApproval] {
+        try await getPreApprovals(identity: CollectionAccountIdentity(party: party))
+    }
+    /// Use preApprovalId returned by the approved-mandate list, rather than its creation request ID.
+    public func cancelPreApproval(preApprovalId: String) async throws {
+        try await client.executeAuthenticated(PreApprovalEndpoint.cancel(preApprovalId: preApprovalId), tokenProvider: tokenProvider)
+    }
+    @available(*, deprecated, message: "Pass the system mandate ID to cancelPreApproval(preApprovalId:).")
+    public func cancelPreApproval(referenceId: String) async throws { try await cancelPreApproval(preApprovalId: referenceId) }
 }

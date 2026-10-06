@@ -1,54 +1,26 @@
-//
-//  RefundEndpoint.swift
-//  MoMoSDK
-//
-//  Created by kobby on 25/09/2026.
-//
-
 import Foundation
 import MoMoCore
 
 enum RefundEndpoint: MoMoEndpoint {
-    
-    case initiate(referenceId: String, payload: RefundRequest, callbackURL: String?)
+    case initiate(referenceId: String, payload: RefundRequest, callbackURL: String?, version: DisbursementAPIVersion)
     case status(referenceId: String)
-    
     var path: String {
         switch self {
-        case .initiate:
-            return "/disbursement/v1_0/refund"
-        case .status(let referenceId):
-            return "/disbursement/v1_0/refund/\(referenceId)"
+        case .initiate(_, _, _, let version): return "/disbursement/\(version.rawValue)/refund"
+        case .status(let id): return "/disbursement/v1_0/refund/\(MoMoPath.segment(id))"
         }
     }
-    
-    var method: HTTPMethod {
-        switch self {
-        case .initiate: return .post
-        case .status: return .get
-        }
-    }
-    
+    var method: HTTPMethod { if case .initiate = self { return .post }; return .get }
     var additionalHeaders: [String: String]? {
-        switch self {
-        case .initiate(let referenceId, _, let callbackURL):
-            var headers = ["X-Reference-Id": referenceId]
-            if let callback = callbackURL {
-                headers["X-Callback-Url"] = callback
-            }
+        if case .initiate(let id, _, let callback, _) = self {
+            var headers = ["X-Reference-Id": id]
+            if let callback { headers["X-Callback-Url"] = callback }
             return headers
-        case .status:
-            return nil
         }
+        return nil
     }
-    
     func body() throws -> Data? {
-        switch self {
-        case .initiate(_, let payload, _):
-            return try JSONEncoder().encode(payload)
-        case .status:
-            return nil
-        }
+        if case .initiate(_, let payload, _, _) = self { return try JSONEncoder().encode(payload) }
+        return nil
     }
-    
 }

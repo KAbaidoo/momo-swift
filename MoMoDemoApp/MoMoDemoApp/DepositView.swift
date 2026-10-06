@@ -14,13 +14,14 @@ struct DepositView: View {
     }
 
     @StateObject private var viewModel: DepositViewModel
-    @State private var phoneNumber: String = "46733123454"
+    @State private var phoneNumber: String = "46733123470"
     @State private var amount: String = "25.00"
     @State private var currency: String = "EUR"
     @State private var payerMessage: String = "Demo App Deposit"
     @State private var payeeNote: String = "Test Deposit"
     
     @FocusState private var focusedField: Field?
+    @State private var transactionTask: Task<Void, Never>?
     
     init(client: MoMoDisbursementClient) {
         _viewModel = StateObject(wrappedValue: DepositViewModel(client: client))
@@ -73,7 +74,7 @@ struct DepositView: View {
                 
                 Button(action: {
                     focusedField = nil
-                    Task {
+                    transactionTask = Task {
                         await viewModel.simulateDeposit(
                             phoneNumber: phoneNumber,
                             amount: amount,
@@ -86,10 +87,17 @@ struct DepositView: View {
                     Text("Deposit \(amount) \(currency)")
                 }
                 .buttonStyle(PrimaryButtonStyle(isLoading: viewModel.isProcessing))
-                .disabled(viewModel.isProcessing)
+                .disabled(viewModel.isProcessing || viewModel.hasUnresolvedRequest)
                 .padding(.horizontal)
                 .padding(.top, 16)
                 
+                if viewModel.referenceId != nil {
+                    Button("Check existing request") {
+                        transactionTask = Task { await viewModel.checkExistingRequest() }
+                    }
+                    .disabled(viewModel.isProcessing)
+                }
+
                 if viewModel.transactionStatus != "Idle" {
                     VStack(spacing: 8) {
                         Text("Transaction Status")
@@ -110,6 +118,7 @@ struct DepositView: View {
             }
             .padding(.bottom, 40)
         }
+        .onDisappear { transactionTask?.cancel() }
         .scrollDismissesKeyboard(.interactively)
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {

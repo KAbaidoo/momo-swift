@@ -1,51 +1,31 @@
-//
-//  MoMoDisbursementClient+Deposit.swift
-//  MoMoSDK
-//
-//  Created by kobby on 25/09/2026.
-//
-
 import Foundation
 import MoMoCore
-
 extension MoMoDisbursementClient {
-    
-    /// Initiates a Deposit to a MoMo Wallet and returns the reference ID.
-    public func deposit(payload: DepositRequest, referenceId: UUID = UUID(), callbackURL: String? = nil) async throws -> String {
-        let token = try await tokenProvider.getValidToken()
-        let uuidString = referenceId.uuidString.lowercased()
-        let endpoint = DepositEndpoint.initiate(referenceId: uuidString, payload: payload, callbackURL: callbackURL)
-        
-        try await client.execute(endpoint, bearerToken: token)
-        
-        return uuidString
+
+    /// Submit once with a caller-owned reference ID for reconciliation.
+    public func deposit(payload: DepositRequest, referenceId: UUID = UUID(), callbackURL: String? = nil, version: DisbursementAPIVersion = .v1) async throws -> String {
+        try PayoutValidation.money(amount: payload.amount, currency: payload.currency)
+        try PayoutValidation.party(payload.payee)
+        try PayoutValidation.callback(callbackURL)
+        let id = referenceId.uuidString.lowercased()
+        try MoMoValidation.referenceId(id)
+        do { try await client.executeAuthenticated(DepositEndpoint.initiate(referenceId: id, payload: payload, callbackURL: callbackURL, version: version), tokenProvider: tokenProvider) }
+        catch { throw MoMoError.transactionFailure(referenceId: id, underlying: error) }
+        return id
     }
-    
-    /// Fetches the status of a Deposit transaction.
     public func getDepositStatus(referenceId: String) async throws -> DepositStatus {
-        let token = try await tokenProvider.getValidToken()
-        let endpoint = DepositEndpoint.status(referenceId: referenceId)
-        
-        return try await client.execute(endpoint, responseType: DepositStatus.self, bearerToken: token)
+        try PayoutValidation.reference(referenceId)
+        return try await client.executeAuthenticated(DepositEndpoint.status(referenceId: referenceId), responseType: DepositStatus.self, tokenProvider: tokenProvider)
     }
-    
-    /// Initiates a Deposit and polls until a final state is reached.
-        public func depositAndWait(
-            payload: DepositRequest,
-            maxAttempts: Int = 12,
-            delayBetweenAttempts: Duration = .seconds(5)
-        ) async throws -> DepositStatus {
-            let referenceId = try await deposit(payload: payload)
-            var attempts = 0
-            
-            while attempts < maxAttempts {
-                attempts += 1
-                try await Task.sleep(for: delayBetweenAttempts)
-                
-                let status = try await getDepositStatus(referenceId: referenceId)
-                if status.status != .pending { return status }
-            }
-            
-            throw MoMoError.unexpectedResponse(statusCode: -1, message: "Non-HTTP URLResponse")
-        }
+    public func depositAndWait(payload: DepositRequest, referenceId: UUID = UUID(), callbackURL: String? = nil, version: DisbursementAPIVersion = .v1, policy: MoMoPollingPolicy) async throws -> DepositStatus {
+        try policy.validate()
+        let id = try await deposit(payload: payload, referenceId: referenceId, callbackURL: callbackURL, version: version)
+        return try await MoMoPoller.poll(referenceId: id, policy: policy, operation: { try await getDepositStatus(referenceId: id) }, isComplete: { $0.status?.isTerminal == true })
+    }
+    @available(iOS 16, macOS 13, watchOS 9, tvOS 16, *)
+    public func depositAndWait(payload: DepositRequest, maxAttempts: Int = 12, delayBetweenAttempts: Duration = .seconds(5)) async throws -> DepositStatus {
+        let c = delayBetweenAttempts.components
+        let interval = Double(c.seconds) + Double(c.attoseconds) / 1e18
+        return try await depositAndWait(payload: payload, policy: MoMoPollingPolicy(maxAttempts: maxAttempts, interval: interval, backoffMultiplier: 1, maximumInterval: max(0, interval)))
+    }
 }

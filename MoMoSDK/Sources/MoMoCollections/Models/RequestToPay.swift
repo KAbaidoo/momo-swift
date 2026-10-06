@@ -28,6 +28,8 @@ public struct RequestToPayRequest: Codable, Sendable, Equatable {
     
     /// A note intended for the payee (the merchant/provider) for reconciliation.
     public let payeeNote: String
+    /// Optional aggregator routing from MTN narrative documentation; requires entitlement.
+    public let transferType: String?
     
     public init(
         amount: String,
@@ -35,7 +37,8 @@ public struct RequestToPayRequest: Codable, Sendable, Equatable {
         externalId: String,
         payer: Party,
         payerMessage: String,
-        payeeNote: String
+        payeeNote: String,
+        transferType: String? = nil
     ) {
         self.amount = amount
         self.currency = currency
@@ -43,6 +46,7 @@ public struct RequestToPayRequest: Codable, Sendable, Equatable {
         self.payer = payer
         self.payerMessage = payerMessage
         self.payeeNote = payeeNote
+        self.transferType = transferType
     }
 }
 
@@ -55,13 +59,13 @@ public struct RequestToPayStatus: Codable, Sendable, Equatable {
     public let externalId: String?
     
     /// The transaction amount.
-    public let amount: String
+    public let amount: String?
     
     /// The ISO 4217 currency code.
-    public let currency: String
+    public let currency: String?
     
     /// The customer who was requested to pay.
-    public let payer: Party
+    public let payer: Party?
     
     /// The message that was shown to the payer.
     public let payerMessage: String?
@@ -77,6 +81,6 @@ public struct RequestToPayStatus: Codable, Sendable, Equatable {
     
     public struct Reason: Codable, Sendable, Equatable {
         public let code: String
-        public let message: String
+        public let message: String?
     }
 }

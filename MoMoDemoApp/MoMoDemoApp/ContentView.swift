@@ -13,11 +13,7 @@ struct ContentView: View {
     @StateObject private var setupVM = SetUpViewModel()
     
     var body: some View {
-        if setupVM.isKeyMissing {
-            NavigationView {
-                MissingKeyInstructionsView()
-            }
-        } else if container.isReady, 
+        if container.isReady,
                   let collectionClient = container.makeCollectionClient(),
                   let disbursementClient = container.makeDisbursementClient() {
             
@@ -35,6 +31,8 @@ struct ContentView: View {
                     }
             }
             .accentColor(MoMoTheme.darkBlue)
+        } else if setupVM.isKeyMissing {
+            NavigationView { MissingKeyInstructionsView() }
         } else {
             ZStack {
                 MoMoTheme.background.edgesIgnoringSafeArea(.all)
@@ -58,6 +56,7 @@ struct ContentView: View {
                         Text("Setup Failed")
                             .font(.headline)
                             .foregroundColor(.red)
+                        Button("Retry setup") { setupVM.errorMessage = nil }
                         Text(error)
                             .font(.subheadline)
                             .foregroundColor(.secondary)
@@ -67,12 +66,13 @@ struct ContentView: View {
                     .padding(.bottom, 40)
                 }
             }
-            .onAppear {
-                Task { 
-                    await setupVM.generateSandboxCredentials() 
-                    if let colCreds = setupVM.collectionCredentials, let disCreds = setupVM.disbursementCredentials {
-                        container.saveCredentials(collection: colCreds, disbursement: disCreds)
-                    }
+            .task(id: setupVM.errorMessage == nil) {
+                guard setupVM.errorMessage == nil else { return }
+                await setupVM.generateSandboxCredentials()
+                guard !Task.isCancelled else { return }
+                if let colCreds = setupVM.collectionCredentials, let disCreds = setupVM.disbursementCredentials {
+                    do { try container.saveCredentials(collection: colCreds, disbursement: disCreds) }
+                    catch { setupVM.errorMessage = error.localizedDescription }
                 }
             }
         }
@@ -96,15 +96,15 @@ struct MissingKeyInstructionsView: View {
                 
                 HStack(alignment: .top) {
                     Text("1.")
-                    Text("Open **MoMoConfig.swift** in Xcode.")
+                    Text("Open Product → Scheme → Edit Scheme → Run → Arguments in Xcode.")
                 }
                 HStack(alignment: .top) {
                     Text("2.")
-                    Text("Replace `YOUR_COLLECTION_SUBSCRIPTION_KEY_HERE` and `YOUR_DISBURSEMENT_SUBSCRIPTION_KEY_HERE` with your primary keys from the developer portal.")
+                    Text("Add MOMO_COLLECTION_SUBSCRIPTION_KEY and MOMO_DISBURSEMENT_SUBSCRIPTION_KEY as environment variables using your sandbox subscription keys.")
                 }
                 HStack(alignment: .top) {
                     Text("3.")
-                    Text("Rebuild and run the app.")
+                    Text("Keep the scheme private, then run the app.")
                 }
             }
             .padding()
@@ -125,7 +125,7 @@ struct CheckoutView: View {
     }
     
     @StateObject private var viewModel: CheckoutViewModel
-    @State private var phoneNumber: String = "46733123453"
+    @State private var phoneNumber: String = "46733123470"
     @State private var amount: String = "50.00"
     @State private var currency: String = "EUR"
     @State private var payerMessage: String = "Demo App Purchase"
@@ -133,6 +133,7 @@ struct CheckoutView: View {
     @State private var deliveryNote: String = ""
     
     @FocusState private var focusedField: Field?
+    @State private var transactionTask: Task<Void, Never>?
     
     init(client: MoMoCollectionClient) {
         _viewModel = StateObject(wrappedValue: CheckoutViewModel(client: client))
@@ -188,7 +189,7 @@ struct CheckoutView: View {
                 
                 Button(action: {
                     focusedField = nil
-                    Task { 
+                    transactionTask = Task {
                         await viewModel.simulatePurchase(
                             phoneNumber: phoneNumber,
                             amount: amount,
@@ -202,10 +203,17 @@ struct CheckoutView: View {
                     Text("Pay \(amount) \(currency)")
                 }
                 .buttonStyle(PrimaryButtonStyle(isLoading: viewModel.isProcessing))
-                .disabled(viewModel.isProcessing)
+                .disabled(viewModel.isProcessing || viewModel.hasUnresolvedRequest)
                 .padding(.horizontal)
                 .padding(.top, 16)
                 
+                if viewModel.referenceId != nil {
+                    Button("Check existing request") {
+                        transactionTask = Task { await viewModel.checkExistingRequest() }
+                    }
+                    .disabled(viewModel.isProcessing)
+                }
+
                 if viewModel.transactionStatus != "Idle" {
                     VStack(spacing: 8) {
                         Text("Transaction Status")
@@ -226,6 +234,7 @@ struct CheckoutView: View {
             }
             .padding(.bottom, 40)
         }
+        .onDisappear { transactionTask?.cancel() }
         .scrollDismissesKeyboard(.interactively)
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
@@ -241,5 +250,5 @@ struct CheckoutView: View {
 }
 
 #Preview {
-    ContentView()
+    ContentView().environmentObject(AppDependencyContainer())
 }
