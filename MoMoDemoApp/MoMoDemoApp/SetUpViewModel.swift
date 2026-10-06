@@ -17,34 +17,37 @@ public class SetUpViewModel: ObservableObject {
     @Published var isProvisioning: Bool = false
     
     var isKeyMissing: Bool {
-        MoMoConfig.collectionSubscriptionKey == "YOUR_COLLECTION_SUBSCRIPTION_KEY_HERE" || MoMoConfig.collectionSubscriptionKey.isEmpty ||
-        MoMoConfig.disbursementSubscriptionKey == "YOUR_DISBURSEMENT_SUBSCRIPTION_KEY_HERE" || MoMoConfig.disbursementSubscriptionKey.isEmpty
+        !DemoConfiguration.hasSubscriptionKeys
     }
     
     func generateSandboxCredentials() async {
-        guard !isKeyMissing else { return }
+        guard !isKeyMissing, !isProvisioning else { return }
         
         isProvisioning = true
+        defer { isProvisioning = false }
         self.errorMessage = nil
         
         do {
             // 1. Provision Collection Credentials
-            let colProvisioner = MoMoSandboxProvisioner(subscriptionKey: MoMoConfig.collectionSubscriptionKey)
-            let (colUser, colKey) = try await colProvisioner.createSandboxCredentials()
-            let colCreds = MoMoCredentials(apiUser: colUser, apiKey: colKey, subscriptionKey: MoMoConfig.collectionSubscriptionKey)
+            if collectionCredentials == nil {
+                let colProvisioner = MoMoSandboxProvisioner(subscriptionKey: DemoConfiguration.collectionSubscriptionKey)
+                let (colUser, colKey) = try await colProvisioner.createSandboxCredentials()
+                collectionCredentials = MoMoCredentials(apiUser: colUser, apiKey: colKey, subscriptionKey: DemoConfiguration.collectionSubscriptionKey)
+            }
             
             // 2. Provision Disbursement Credentials
-            let disProvisioner = MoMoSandboxProvisioner(subscriptionKey: MoMoConfig.disbursementSubscriptionKey)
-            let (disUser, disKey) = try await disProvisioner.createSandboxCredentials()
-            let disCreds = MoMoCredentials(apiUser: disUser, apiKey: disKey, subscriptionKey: MoMoConfig.disbursementSubscriptionKey)
-            
-            self.collectionCredentials = colCreds
-            self.disbursementCredentials = disCreds
+            if disbursementCredentials == nil {
+                let disProvisioner = MoMoSandboxProvisioner(subscriptionKey: DemoConfiguration.disbursementSubscriptionKey)
+                let (disUser, disKey) = try await disProvisioner.createSandboxCredentials()
+                disbursementCredentials = MoMoCredentials(apiUser: disUser, apiKey: disKey, subscriptionKey: DemoConfiguration.disbursementSubscriptionKey)
+            }
+            try Task.checkCancellation()
+        } catch is CancellationError {
+            self.errorMessage = nil
         } catch {
             self.errorMessage = error.localizedDescription
         }
         
-        isProvisioning = false
     }
     
 }
