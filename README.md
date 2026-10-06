@@ -92,3 +92,11 @@ xcodebuild -workspace MoMo.xcworkspace -scheme MoMoDemoApp \
 ```
 
 Tests use synthetic responses and require no keys or live transactions. CI defines macOS and Linux jobs. [Release checklist](docs/RELEASE_CHECKLIST.md) records remaining operator validation and packaging decisions.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for local checks, documentation expectations, security guidance, and the pull request process. Bug reports and feature proposals have issue templates to help contributors supply the relevant API context.
+
+## License
+
+MoMo Swift is available under the [MIT License](LICENSE). This is an independent community project and is not affiliated with or endorsed by MTN. MTN and MoMo are trademarks of their respective owners.
