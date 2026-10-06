@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		CE6A94B1306ABFA1002C2B74 /* MoMoSDK in Frameworks */ = {isa = PBXBuildFile; productRef = CE6A94B0306ABFA1002C2B74 /* MoMoSDK */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		CEF00D00303CF41F008ED8E9 /* MoMoDemoApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MoMoDemoApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,16 +27,25 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CE6A94B1306ABFA1002C2B74 /* MoMoSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		CE6A94AF306ABF83002C2B74 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		CEF00CF7303CF41F008ED8E9 = {
 			isa = PBXGroup;
 			children = (
 				CEF00D02303CF41F008ED8E9 /* MoMoDemoApp */,
+				CE6A94AF306ABF83002C2B74 /* Frameworks */,
 				CEF00D01303CF41F008ED8E9 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -65,6 +78,7 @@
 			);
 			name = MoMoDemoApp;
 			packageProductDependencies = (
+				CE6A94B0306ABFA1002C2B74 /* MoMoSDK */,
 			);
 			productName = MoMoDemoApp;
 			productReference = CEF00D00303CF41F008ED8E9 /* MoMoDemoApp.app */;
@@ -332,6 +346,13 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		CE6A94B0306ABFA1002C2B74 /* MoMoSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MoMoSDK;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = CEF00CF8303CF41F008ED8E9 /* Project object */;
 }
