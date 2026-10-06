@@ -8,3 +8,4 @@
 @_exported import MoMoCore
 @_exported import MoMoCollections
 @_exported import MoMoDisbursements
+@_exported import MoMoRemittance

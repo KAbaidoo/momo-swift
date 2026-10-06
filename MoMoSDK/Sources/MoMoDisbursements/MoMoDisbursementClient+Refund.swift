@@ -1,54 +1,31 @@
-//
-//  MoMoDisbursementClient+Refund.swift
-//  MoMoSDK
-//
-//  Created by kobby on 25/09/2026.
-//
-
 import Foundation
 import MoMoCore
-
 extension MoMoDisbursementClient {
-    
-    /// Initiates a Refund for a previous disbursement transaction.
-    public func refund(payload: RefundRequest, referenceId: UUID = UUID(), callbackURL: String? = nil) async throws -> String {
-        let token = try await tokenProvider.getValidToken()
-        let uuidString = referenceId.uuidString.lowercased()
-        let endpoint = RefundEndpoint.initiate(referenceId: uuidString, payload: payload, callbackURL: callbackURL)
-        
-        try await client.execute(endpoint, bearerToken: token)
-        return uuidString
+
+    /// Submit once with a caller-owned reference ID for reconciliation.
+    public func refund(payload: RefundRequest, referenceId: UUID = UUID(), callbackURL: String? = nil, version: DisbursementAPIVersion = .v1) async throws -> String {
+        try PayoutValidation.money(amount: payload.amount, currency: payload.currency)
+        try PayoutValidation.reference(payload.referenceIdToRefund)
+        try PayoutValidation.callback(callbackURL)
+        let id = referenceId.uuidString.lowercased()
+        try MoMoValidation.referenceId(id)
+        do { try await client.executeAuthenticated(RefundEndpoint.initiate(referenceId: id, payload: payload, callbackURL: callbackURL, version: version), tokenProvider: tokenProvider) }
+        catch { throw MoMoError.transactionFailure(referenceId: id, underlying: error) }
+        return id
     }
-    
-    /// Fetches the status of a Refund transaction.
     public func getRefundStatus(referenceId: String) async throws -> RefundStatus {
-        let token = try await tokenProvider.getValidToken()
-        let endpoint = RefundEndpoint.status(referenceId: referenceId)
-        
-        return try await client.execute(
-            endpoint,
-            responseType: RefundStatus.self,
-            bearerToken: token
-        )
+        try PayoutValidation.reference(referenceId)
+        return try await client.executeAuthenticated(RefundEndpoint.status(referenceId: referenceId), responseType: RefundStatus.self, tokenProvider: tokenProvider)
     }
-    
-    /// Initiates a Refund and continuously polls until it reaches a final state.
-    public func refundAndWait(
-        payload: RefundRequest,
-        maxAttempts: Int = 12,
-        delayBetweenAttempts: Duration = .seconds(5)
-    ) async throws -> RefundStatus {
-        let referenceId = try await refund(payload: payload)
-        var attempts = 0
-        
-        while attempts < maxAttempts {
-            attempts += 1
-            try await Task.sleep(for: delayBetweenAttempts)
-            
-            let status = try await getRefundStatus(referenceId: referenceId)
-            if status.status != .pending { return status }
-        }
-        
-        throw MoMoError.unexpectedResponse(statusCode: -1, message: "Non-HTTP URLResponse")
+    public func refundAndWait(payload: RefundRequest, referenceId: UUID = UUID(), callbackURL: String? = nil, version: DisbursementAPIVersion = .v1, policy: MoMoPollingPolicy) async throws -> RefundStatus {
+        try policy.validate()
+        let id = try await refund(payload: payload, referenceId: referenceId, callbackURL: callbackURL, version: version)
+        return try await MoMoPoller.poll(referenceId: id, policy: policy, operation: { try await getRefundStatus(referenceId: id) }, isComplete: { $0.status?.isTerminal == true })
+    }
+    @available(iOS 16, macOS 13, watchOS 9, tvOS 16, *)
+    public func refundAndWait(payload: RefundRequest, maxAttempts: Int = 12, delayBetweenAttempts: Duration = .seconds(5)) async throws -> RefundStatus {
+        let c = delayBetweenAttempts.components
+        let interval = Double(c.seconds) + Double(c.attoseconds) / 1e18
+        return try await refundAndWait(payload: payload, policy: MoMoPollingPolicy(maxAttempts: maxAttempts, interval: interval, backoffMultiplier: 1, maximumInterval: max(0, interval)))
     }
 }
