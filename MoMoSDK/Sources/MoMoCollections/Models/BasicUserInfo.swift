@@ -14,6 +14,7 @@ public struct BasicUserInfo: Codable, Sendable, Equatable {
     public let birthdate: String?
     public let locale: String?
     public let gender: String?
+    public let status: String?
     
     enum CodingKeys: String, CodingKey {
         case givenName = "given_name"
@@ -21,6 +22,7 @@ public struct BasicUserInfo: Codable, Sendable, Equatable {
         case birthdate
         case locale
         case gender
+        case status
     }
 
 }

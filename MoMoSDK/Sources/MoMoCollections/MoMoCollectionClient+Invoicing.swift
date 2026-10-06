@@ -1,51 +1,28 @@
-//
-//  MoMoCollectionClient+Invoicing.swift
-//  MoMoSDK
-//
-//  Created by kobby on 14/09/2026.
-//
-
 import Foundation
 import MoMoCore
 
 extension MoMoCollectionClient {
-    
-    /// Creates a new invoice and returns the generated reference ID.
-    public func createInvoice(
-        payload: InvoiceRequest,
-        referenceId: UUID = UUID(),
-        callbackURL: String? = nil
-    ) async throws -> String {
-        let token = try await tokenProvider.getValidToken()
-        let uuidString = referenceId.uuidString.lowercased()
-        let endpoint = InvoiceEndpoint.create(
-            referenceId: uuidString,
-            payload: payload,
-            callbackURL: callbackURL
-        )
-        
-        try await client.execute(endpoint, bearerToken: token)
-        return uuidString
+    public func createInvoice(payload: InvoiceRequest, referenceId: UUID = UUID(), callbackURL: String? = nil) async throws -> String {
+        try CollectionValidation.money(payload.amount, payload.currency)
+        try CollectionValidation.party(payload.intendedPayer)
+        try CollectionValidation.party(payload.payee)
+        try MoMoValidation.callbackURL(callbackURL)
+        try MoMoValidation.referenceId(referenceId.uuidString)
+        guard let seconds = Double(payload.validityDuration), seconds.isFinite, seconds > 0 else { throw CollectionValidationError.invalidValidity }
+        let id = referenceId.uuidString.lowercased()
+        return try await submit(InvoiceEndpoint.create(referenceId: id, payload: payload, callbackURL: callbackURL), referenceId: id)
     }
-    
-    /// Fetches the current status of a specific invoice.
     public func getInvoiceStatus(referenceId: String) async throws -> InvoiceStatus {
-        let token = try await tokenProvider.getValidToken()
-        let endpoint = InvoiceEndpoint.status(referenceId: referenceId)
-        
-        return try await client.execute(
-            endpoint,
-            responseType: InvoiceStatus.self,
-            bearerToken: token
-        )
+        try await client.executeAuthenticated(InvoiceEndpoint.status(referenceId: referenceId), responseType: InvoiceStatus.self, tokenProvider: tokenProvider)
     }
-    
-    /// Cancels a pending invoice.
-    public func cancelInvoice(referenceId: String) async throws {
-        let token = try await tokenProvider.getValidToken()
-        let endpoint = InvoiceEndpoint.cancel(referenceId: referenceId)
-        
-        // DELETE returns 200 OK or 202 Accepted on success
-        try await client.execute(endpoint, bearerToken: token)
+    /// Cancellation requires its own reference ID and an external reconciliation ID.
+    @discardableResult
+    public func cancelInvoice(invoiceReferenceId: String, externalId: String, referenceId: UUID = UUID(), callbackURL: String? = nil) async throws -> String {
+        try MoMoValidation.referenceId(referenceId.uuidString)
+        try MoMoValidation.referenceId(invoiceReferenceId)
+        try MoMoValidation.callbackURL(callbackURL)
+        guard !externalId.isEmpty else { throw MoMoError.invalidConfiguration("External ID is required") }
+        let id = referenceId.uuidString.lowercased()
+        return try await submit(InvoiceEndpoint.cancel(invoiceReferenceId: invoiceReferenceId, referenceId: id, payload: .init(externalId: externalId), callbackURL: callbackURL), referenceId: id)
     }
 }
