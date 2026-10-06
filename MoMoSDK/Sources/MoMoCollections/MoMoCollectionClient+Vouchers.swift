@@ -11,6 +11,7 @@ import MoMoCore
 
 extension MoMoCollectionClient {
     /// Creates a new voucher and returns the generated reference ID.
+    @available(*, deprecated, message: "Voucher routes are absent from the current MTN OpenAPI export; operator validation is required.")
     public func createVoucher(payload: VoucherRequest, referenceId: UUID = UUID(), callbackURL: String? = nil) async throws -> String {
         let token = try await tokenProvider.getValidToken()
         let uuidString = referenceId.uuidString.lowercased()
@@ -21,6 +22,7 @@ extension MoMoCollectionClient {
     }
     
     /// Fetches the current status and details of a specific voucher.
+    @available(*, deprecated, message: "Voucher routes are absent from the current MTN OpenAPI export; operator validation is required.")
     public func getVoucherStatus(referenceId: String) async throws -> VoucherStatus {
         let token = try await tokenProvider.getValidToken()
         let endpoint = VoucherEndpoint.status(referenceId: referenceId)
@@ -29,6 +31,7 @@ extension MoMoCollectionClient {
     }
     
     /// Cancel a previously generated voucher.
+    @available(*, deprecated, message: "Voucher routes are absent from the current MTN OpenAPI export; operator validation is required.")
     public func cancelVoucher(referenceId: String) async throws {
         let token = try await tokenProvider.getValidToken()
         let endpoint = VoucherEndpoint.cancel(referenceId: referenceId)

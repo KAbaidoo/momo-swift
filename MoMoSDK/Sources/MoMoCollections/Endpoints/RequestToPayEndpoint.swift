@@ -16,16 +16,16 @@ enum RequestToPayEndpoint: MoMoEndpoint {
     /// Checks the status of an existing request.
     case status(referenceId: String)
     /// Notify service/product delivery
-    case deliveryNotification(referenceId: String, payload: DeliveryNotification)
+    case deliveryNotification(referenceId: String, payload: DeliveryNotification, language: String?)
     
     var path: String {
         switch self {
         case .initiate:
             return "/collection/v1_0/requesttopay"
         case .status(let referenceId):
-            return "/collection/v1_0/requesttopay/\(referenceId)"
-        case .deliveryNotification(let referenceId,_):
-            return "/collection/v1_0/requesttopay/\(referenceId)/deliverynotification"
+            return "/collection/v1_0/requesttopay/\(MoMoPath.segment(referenceId))"
+        case .deliveryNotification(let referenceId,_,_):
+            return "/collection/v1_0/requesttopay/\(MoMoPath.segment(referenceId))/deliverynotification"
         }
     }
     
@@ -45,9 +45,10 @@ enum RequestToPayEndpoint: MoMoEndpoint {
             }
             return headers
             
-        case .deliveryNotification:
-            // Standard MoMo requirement for this endpoint
-            return ["notificationMessage": "Delivery Confirmation"]
+        case .deliveryNotification(_, let payload, let language):
+            var headers = ["notificationMessage": payload.notificationMessage]
+            headers["Language"] = language
+            return headers
             
         case .status:
             return nil // No extra headers needed for the GET request
@@ -59,7 +60,7 @@ enum RequestToPayEndpoint: MoMoEndpoint {
         switch self {
         case .initiate(_, let payload, _):
             return try encoder.encode(payload)
-        case .deliveryNotification(_, let payload):
+        case .deliveryNotification(_, let payload, _):
             return try encoder.encode(payload)
         case .status:
             return nil

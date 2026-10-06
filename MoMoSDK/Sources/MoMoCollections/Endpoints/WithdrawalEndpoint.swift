@@ -9,16 +9,16 @@ import Foundation
 import MoMoCore
 
 enum WithdrawalEndpoint: MoMoEndpoint {
-    case initiate(referenceId: String, payload: RequestToWithdrawRequest, callbackURL: String?)
+    case initiate(referenceId: String, payload: RequestToWithdrawRequest, callbackURL: String?, version: WithdrawalVersion)
     case status(referenceId: String)
     
     
     var path: String {
         switch self {
-        case .initiate:
-            return "/collection/v1_0/requesttowithdraw"
+        case .initiate(_, _, _, let version):
+            return "/collection/\(version.rawValue)/requesttowithdraw"
         case .status(let referenceId):
-            return "/collection/v1_0/requesttowithdraw/\(referenceId)"
+            return "/collection/v1_0/requesttowithdraw/\(MoMoPath.segment(referenceId))"
             
         }
     }
@@ -32,7 +32,7 @@ enum WithdrawalEndpoint: MoMoEndpoint {
     
     var additionalHeaders: [String : String]? {
         switch self {
-        case .initiate(let referenceId, _, let callbackURL):
+        case .initiate(let referenceId, _, let callbackURL, _):
             var headers = ["X-Reference-Id": referenceId]
             if let callback = callbackURL {
                 headers["X-Callback-Url"] = callback
@@ -45,7 +45,7 @@ enum WithdrawalEndpoint: MoMoEndpoint {
     
     func body() throws -> Data? {
         switch self {
-        case .initiate(_,let payload,_):
+        case .initiate(_,let payload,_,_):
             return try JSONEncoder().encode(payload)
         case .status:
             return nil

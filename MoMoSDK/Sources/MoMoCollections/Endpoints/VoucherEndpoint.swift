@@ -17,7 +17,7 @@ enum VoucherEndpoint: MoMoEndpoint {
         case .create:
             return "/collection/v1_0/voucher"
         case .status(let referenceId), .cancel(let referenceId):
-            return "/collection/v1_0/voucher/\(referenceId)"
+            return "/collection/v1_0/voucher/\(MoMoPath.segment(referenceId))"
         }
     }
     
