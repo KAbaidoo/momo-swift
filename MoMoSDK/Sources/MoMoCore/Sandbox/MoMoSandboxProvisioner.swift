@@ -21,25 +21,27 @@ private struct APIKeyResponse: Codable {
 private enum SandboxEndpoint: MoMoEndpoint {
     case createUser(referenceId: String, callbackHost: String)
     case createKey(referenceId: String)
+    case getUser(referenceId: String)
     
     var path: String {
         switch self {
         case .createUser:
             return "/v1_0/apiuser"
         case .createKey(let referenceId):
-            return "/v1_0/apiuser/\(referenceId)/apikey"
+            return "/v1_0/apiuser/\(MoMoPath.segment(referenceId))/apikey"
+        case .getUser(let id): return "/v1_0/apiuser/\(MoMoPath.segment(id))"
         }
     }
     
     var method: HTTPMethod {
-        return .post
+        if case .getUser = self { return .get }; return .post
     }
     
     var additionalHeaders: [String : String]? {
         switch self {
         case .createUser(let referenceId, _):
             return ["X-Reference-Id": referenceId]
-        case .createKey:
+        case .createKey, .getUser:
             return nil // Inherits the Ocp-Apim-Subscription-Key automatically from the client
         }
     }
@@ -49,13 +51,18 @@ private enum SandboxEndpoint: MoMoEndpoint {
         case .createUser(_, let callbackHost):
             let payload = APIUserPayload(providerCallbackHost: callbackHost)
             return try JSONEncoder().encode(payload)
-        case .createKey:
+        case .createKey, .getUser:
             return nil
         }
     }
 }
 /// A utility exclusively used in the Sandbox environment to provision testing credentials.
-public struct MoMoSandboxProvisioner {
+public struct MoMoSandboxUser: Decodable, Sendable {
+    public let providerCallbackHost: String?
+    public let targetEnvironment: String?
+}
+
+public struct MoMoSandboxProvisioner: Sendable {
     private let client: MoMoAPIClient
     
     public init(subscriptionKey: String) {
@@ -63,10 +70,34 @@ public struct MoMoSandboxProvisioner {
         self.init(client: client)
     }
     
-    private init(client: MoMoAPIClient) {
+    public init(subscriptionKey: String, transport: any MoMoHTTPTransport) {
+        client = MoMoAPIClient(environment: .sandbox, subscriptionKey: subscriptionKey, transport: transport)
+    }
+
+    public init(client: MoMoAPIClient) {
         self.client = client
     }
     
+    public func createUser(referenceId: String = UUID().uuidString.lowercased(), callbackHost: String = "webhook.site") async throws -> String {
+        try validate(referenceId)
+        guard let url = URLComponents(string: "https://" + callbackHost), url.host == callbackHost, url.path.isEmpty, url.query == nil, url.fragment == nil, url.user == nil, url.port == nil else { throw MoMoError.invalidConfiguration("Callback host must be a hostname") }
+        try await client.execute(SandboxEndpoint.createUser(referenceId: referenceId, callbackHost: callbackHost))
+        return referenceId
+    }
+    public func createKey(referenceId: String) async throws -> String {
+        try validate(referenceId)
+        return try await client.execute(SandboxEndpoint.createKey(referenceId: referenceId), responseType: APIKeyResponse.self).apiKey
+    }
+    public func getUser(referenceId: String) async throws -> MoMoSandboxUser {
+        try validate(referenceId)
+        return try await client.execute(SandboxEndpoint.getUser(referenceId: referenceId), responseType: MoMoSandboxUser.self)
+    }
+    private func validate(_ referenceId: String) throws {
+        guard case .sandbox = client.environment else { throw MoMoError.invalidConfiguration("Provisioning is sandbox only") }
+        try MoMoValidation.referenceId(referenceId)
+        guard referenceId.split(separator: "-")[2].first == "4" else { throw MoMoError.invalidConfiguration("Sandbox user reference must be UUID version 4") }
+    }
+
     /// Generates a new API User (UUID) and fetches its corresponding API Key.
     /// - Parameter callbackHost: The domain registered for your webhooks (e.g., "webhook.site").
     /// - Returns: A tuple containing the newly generated `apiUser` and `apiKey`.
@@ -74,24 +105,7 @@ public struct MoMoSandboxProvisioner {
         callbackHost: String = "webhook.site"
     ) async throws -> (apiUser: String, apiKey: String) {
         
-        // 1. Safety Check: Ensure this is never run against a production URL
-        guard case .sandbox = client.environment else {
-            throw MoMoError.unauthorized(message: "Provisioning is only allowed in the Sandbox environment.")
-        }
-        
-        // The UUID becomes the API User ID
-        let referenceId = UUID().uuidString.lowercased()
-        
-        // 2. Create the API User
-        // Expects a 201 Created. No response body to decode.
-        let userEndpoint = SandboxEndpoint.createUser(referenceId: referenceId, callbackHost: callbackHost)
-        try await client.execute(userEndpoint, bearerToken: nil)
-        
-        // 3. Generate the API Key
-        // Expects a 201 Created with a JSON body containing the API key.
-        let keyEndpoint = SandboxEndpoint.createKey(referenceId: referenceId)
-        let response = try await client.execute(keyEndpoint, responseType: APIKeyResponse.self, bearerToken: nil)
-        
-        return (apiUser: referenceId, apiKey: response.apiKey)
+        let referenceId = try await createUser(callbackHost: callbackHost)
+        return (referenceId, try await createKey(referenceId: referenceId))
     }
 }
