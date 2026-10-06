@@ -17,6 +17,8 @@ import Combine
 class AppDependencyContainer: ObservableObject {
     @Published var collectionCredentials: MoMoCredentials?
     @Published var disbursementCredentials: MoMoCredentials?
+    private var collectionClient: MoMoCollectionClient?
+    private var disbursementClient: MoMoDisbursementClient?
     
     var isReady: Bool { collectionCredentials != nil && disbursementCredentials != nil }
     
@@ -24,27 +26,28 @@ class AppDependencyContainer: ObservableObject {
         if let storable = CredentialStorage.shared.loadCredentials() {
             self.collectionCredentials = storable.collection
             self.disbursementCredentials = storable.disbursement
+            self.collectionClient = MoMoCollectionClient(credentials: storable.collection, environment: .sandbox)
+            self.disbursementClient = MoMoDisbursementClient(credentials: storable.disbursement, environment: .sandbox)
         }
     }
     
-    func saveCredentials(collection: MoMoCredentials, disbursement: MoMoCredentials) {
+    func saveCredentials(collection: MoMoCredentials, disbursement: MoMoCredentials) throws {
+        try CredentialStorage.shared.saveCredentials(collection: collection, disbursement: disbursement)
+        self.collectionClient = MoMoCollectionClient(credentials: collection, environment: .sandbox)
+        self.disbursementClient = MoMoDisbursementClient(credentials: disbursement, environment: .sandbox)
         self.collectionCredentials = collection
         self.disbursementCredentials = disbursement
-        try? CredentialStorage.shared.saveCredentials(collection: collection, disbursement: disbursement)
     }
     
     // MARK: - Client Factories
     
     /// Creates a MoMoCollectionClient if credentials are available.
     func makeCollectionClient() -> MoMoCollectionClient? {
-        guard let creds = collectionCredentials else { return nil }
-        // In a real app, environment might also be configurable.
-        return MoMoCollectionClient(credentials: creds, environment: .sandbox)
+        collectionClient
     }
     
     /// Creates a MoMoDisbursementClient if credentials are available.
     func makeDisbursementClient() -> MoMoDisbursementClient? {
-        guard let creds = disbursementCredentials else { return nil }
-        return MoMoDisbursementClient(credentials: creds, environment: .sandbox)
+        disbursementClient
     }
 }

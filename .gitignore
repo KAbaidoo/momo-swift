@@ -5,3 +5,8 @@ MoMoConfig.swift
 .DS_Store
 xcuserdata/
 *.xcuserstate
+
+# Swift Package Manager and local verification
+.build/
+.swiftpm/
+DerivedData/
