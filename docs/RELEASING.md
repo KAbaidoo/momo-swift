@@ -16,7 +16,9 @@ The [publication workflow](../.github/workflows/release.yml) publishes a version
 
 Publication is disabled until `publicationApproved` is explicitly set to true **and** [issue #11](https://github.com/KAbaidoo/momo-swift/issues/11) is closed after its readiness work is complete. The pipeline reads the issue state before verification and again before publishing. Merging this automation alone must not enable a first release.
 
-Before approval, complete the [readiness record](RELEASE_READINESS.md) and [release checklist](RELEASE_CHECKLIST.md), including authorized operator evidence for claimed capabilities, explicit exclusions, license/support decisions, and final owner approval. Retain any sensitive evidence in its restricted location. Closing issue #11 is an owner assertion that these prerequisites have been satisfied; the pipeline cannot independently certify operator evidence.
+Before scope approval, complete the [readiness record](RELEASE_READINESS.md) with authorized operator evidence for claimed capabilities or explicit exclusions, license/support decisions, and owner approval. The owner-approved experimental v0.1.0 scope excludes operator verification and production-readiness claims. Closing issue #11 records that scope decision; it does not mark operator behavior as verified. Retain any sensitive evidence in its restricted location. The pipeline cannot independently certify operator evidence.
+
+After scope approval, the [release checklist](RELEASE_CHECKLIST.md), explicit publication activation, and exact-main-commit verification still apply. Issue closure alone does not enable publication or bypass checks.
 
 No live transactions, tags, releases, or changes to issue #11 are required to test this automation. Tests use temporary Git repositories and an in-memory GitHub transport.
 
