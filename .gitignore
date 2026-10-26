@@ -10,3 +10,8 @@ xcuserdata/
 .build/
 .swiftpm/
 DerivedData/
+
+# Private MTN OpenAPI baseline downloads (see docs/openapi/README.md)
+.openapi-baselines/
+__pycache__/
+*.py[cod]

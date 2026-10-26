@@ -6,7 +6,7 @@ The exports contain 56 operations. The SDK covers 54 standard operations, includ
 
 ## Export evidence
 
-Exports were obtained from `https://momodeveloper.mtn.com/mapi/apis/{api}?export=true&api-version=2022-04-01-preview`, requesting OpenAPI JSON. SHA-256 values identify the exact source bytes used for review, rather than implying the hosted documentation will remain unchanged.
+The original review recorded exports obtained from `https://momodeveloper.mtn.com/mapi/apis/{api}?export=true&api-version=2022-04-01-preview`, requesting OpenAPI JSON. On 26 October 2026, revision-qualified URLs were verified to return byte-identical exports for the recorded revisions. Those raw reviewed bytes are preserved in the private immutable archive recorded in [`docs/openapi/manifest.json`](openapi/manifest.json). The manifest records a revision-qualified retrieval URL, original review and retrieval dates, operation count, SHA-256, and archive commit for each file. The archive is private because MTN's terms do not clearly permit redistribution of the full specifications. Run the retrieval, checksum, and upstream comparison commands in [`docs/openapi/README.md`](openapi/README.md). The hashes below identify the exact source bytes used for the 4 October 2026 review.
 
 | Export | Revision | Operations | SHA-256 |
 | --- | --- | --- | --- |

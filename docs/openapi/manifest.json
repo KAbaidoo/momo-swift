@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-04",
+  "retrievedAt": "2026-10-26",
+  "baselines": [
+    {
+      "api": "collection",
+      "revision": 7,
+      "reviewedAt": "2026-10-04",
+      "retrievedAt": "2026-10-26",
+      "sourceUrl": "https://momodeveloper.mtn.com/mapi/apis/collection;rev=7?export=true&api-version=2022-04-01-preview",
+      "contentType": "application/vnd.oai.openapi+json",
+      "openapiVersion": "3.0.1",
+      "operations": 23,
+      "sha256": "dd84d9ddf2815f29ddc89c2b9b9a5c7efca4f934181ae98439f8eb7b39b07411",
+      "baselineRole": "original",
+      "archive": {
+        "repository": "KAbaidoo/momo-swift-contract-baselines",
+        "commit": "ce587fb25fbbb1f47dc9cdaf527f1925d7ba5fe8",
+        "path": "snapshots/2026-10-26/collection.json"
+      }
+    },
+    {
+      "api": "disbursement",
+      "revision": 6,
+      "reviewedAt": "2026-10-04",
+      "retrievedAt": "2026-10-26",
+      "sourceUrl": "https://momodeveloper.mtn.com/mapi/apis/disbursement;rev=6?export=true&api-version=2022-04-01-preview",
+      "contentType": "application/vnd.oai.openapi+json",
+      "openapiVersion": "3.0.1",
+      "operations": 16,
+      "sha256": "863db0171506d89cb9197c770c95a43245e4ed37da4c6f0e6af24f0bfda9dfa4",
+      "baselineRole": "original",
+      "archive": {
+        "repository": "KAbaidoo/momo-swift-contract-baselines",
+        "commit": "ce587fb25fbbb1f47dc9cdaf527f1925d7ba5fe8",
+        "path": "snapshots/2026-10-26/disbursement.json"
+      }
+    },
+    {
+      "api": "remittance",
+      "revision": 4,
+      "reviewedAt": "2026-10-04",
+      "retrievedAt": "2026-10-26",
+      "sourceUrl": "https://momodeveloper.mtn.com/mapi/apis/remittance;rev=4?export=true&api-version=2022-04-01-preview",
+      "contentType": "application/vnd.oai.openapi+json",
+      "openapiVersion": "3.0.1",
+      "operations": 14,
+      "sha256": "bdbc9f7bd5678a93fce96c2c5db17b6bd2fe36aebe39d72edd6e6fff4087170c",
+      "baselineRole": "original",
+      "archive": {
+        "repository": "KAbaidoo/momo-swift-contract-baselines",
+        "commit": "ce587fb25fbbb1f47dc9cdaf527f1925d7ba5fe8",
+        "path": "snapshots/2026-10-26/remittance.json"
+      }
+    },
+    {
+      "api": "sandbox-provisioning-api",
+      "revision": 1,
+      "reviewedAt": "2026-10-04",
+      "retrievedAt": "2026-10-26",
+      "sourceUrl": "https://momodeveloper.mtn.com/mapi/apis/sandbox-provisioning-api;rev=1?export=true&api-version=2022-04-01-preview",
+      "contentType": "application/vnd.oai.openapi+json",
+      "openapiVersion": "3.0.1",
+      "operations": 3,
+      "sha256": "bb26a39193e71df06bb7812487bbde08b248b294ba9a23e734de4dcca3462e42",
+      "baselineRole": "original",
+      "archive": {
+        "repository": "KAbaidoo/momo-swift-contract-baselines",
+        "commit": "ce587fb25fbbb1f47dc9cdaf527f1925d7ba5fe8",
+        "path": "snapshots/2026-10-26/sandbox-provisioning-api.json"
+      }
+    }
+  ]
+}
