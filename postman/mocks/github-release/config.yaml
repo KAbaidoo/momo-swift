@@ -1,0 +1,11 @@
+version: 1
+name: github-release
+slug: github-release
+protocol: http
+origin: api.github.com
+port: 4500
+interceptRequests: true
+scenarios:
+  - name: default
+    path: ./default.js
+    default: true

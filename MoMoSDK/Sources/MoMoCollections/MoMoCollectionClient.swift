@@ -23,12 +23,21 @@ public struct MoMoCollectionClient: Sendable {
     }
 
     public func requestToPay(payload: RequestToPayRequest, referenceId: UUID = UUID(), callbackURL: String? = nil) async throws -> String {
-        try CollectionValidation.money(payload.amount, payload.currency)
-        try CollectionValidation.party(payload.payer)
-        try MoMoValidation.callbackURL(callbackURL)
-        try MoMoValidation.referenceId(referenceId.uuidString)
         let id = referenceId.uuidString.lowercased()
-        return try await submit(RequestToPayEndpoint.initiate(referenceId: id, payload: payload, callbackURL: callbackURL), referenceId: id)
+        do {
+            try CollectionValidation.money(payload.amount, payload.currency)
+            try CollectionValidation.party(payload.payer)
+            try MoMoValidation.callbackURL(callbackURL)
+            try MoMoValidation.referenceId(referenceId.uuidString)
+        } catch {
+            throw MoMoError.preSubmissionFailure(referenceId: id, underlying: error)
+        }
+        try await client.executeAuthenticatedSubmission(
+            RequestToPayEndpoint.initiate(referenceId: id, payload: payload, callbackURL: callbackURL),
+            referenceId: id,
+            tokenProvider: tokenProvider
+        )
+        return id
     }
 
     public func getTransactionStatus(referenceId: String) async throws -> RequestToPayStatus {

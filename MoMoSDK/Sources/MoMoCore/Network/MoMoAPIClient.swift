@@ -55,59 +55,90 @@ public actor MoMoAPIClient {
         }
     }
 
-    private func performRequest(_ endpoint: any MoMoEndpoint, bearerToken: String?) async throws -> (Data, HTTPURLResponse) {
-        try Task.checkCancellation()
-        guard var components = URLComponents(url: environment.baseURL, resolvingAgainstBaseURL: false),
-              components.scheme?.lowercased() == "https", components.host?.isEmpty == false,
-              components.user == nil, components.password == nil, components.query == nil, components.fragment == nil,
-              endpoint.path.hasPrefix("/"), !endpoint.path.hasPrefix("//"),
-              !endpoint.path.contains("?"), !endpoint.path.contains("#"), !endpoint.path.contains("\\"),
-              !endpoint.path.split(separator: "/").contains(where: { $0 == "." || $0 == ".." }) else { throw MoMoError.invalidURL }
-        // All dynamic components are encoded by endpoint builders. Validate existing percent escapes.
-        let path = components.percentEncodedPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        let combined = (path.isEmpty ? "" : "/" + path) + endpoint.path
-        let permitted = CharacterSet.urlPathAllowed.union(CharacterSet(charactersIn: "%"))
-        guard combined.unicodeScalars.allSatisfy({ permitted.contains($0) }), combined.removingPercentEncoding != nil else { throw MoMoError.invalidURL }
-        components.percentEncodedPath = combined
-        guard let url = components.url else { throw MoMoError.invalidURL }
-        for value in [subscriptionKey, environment.targetEnvironmentHeaderValue, bearerToken ?? ""] {
-            guard !value.contains(where: { $0.isNewline || $0 == "\0" }) else { throw MoMoError.invalidConfiguration("Invalid authentication header") }
+    /// Executes one financial submission while preserving whether the request reached the transport boundary.
+    /// Errors before the transport invocation are reported as known pre-submission failures; errors after it
+    /// are reported as uncertain transaction failures. This method never retries a submission.
+    @discardableResult
+    public func executeAuthenticatedSubmission(_ endpoint: any MoMoEndpoint, referenceId: String, tokenProvider: MoMoTokenProvider) async throws -> HTTPURLResponse {
+        guard endpoint.method != .get else {
+            throw MoMoError.preSubmissionFailure(
+                referenceId: referenceId,
+                underlying: MoMoError.invalidConfiguration("Authenticated submission requires a non-GET endpoint")
+            )
         }
-        var request = URLRequest(url: url)
-        request.httpMethod = endpoint.method.rawValue
-        request.timeoutInterval = 60
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(subscriptionKey, forHTTPHeaderField: "Ocp-Apim-Subscription-Key")
-        request.setValue(environment.targetEnvironmentHeaderValue, forHTTPHeaderField: "X-Target-Environment")
-        if let bearerToken { request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization") }
-        for (key, value) in endpoint.additionalHeaders ?? [:] {
-            guard !key.contains(where: { $0.isNewline }), !value.contains(where: { $0.isNewline }) else { throw MoMoError.invalidConfiguration("Invalid header") }
-            request.setValue(value, forHTTPHeaderField: key)
-        }
-        request.httpBody = try endpoint.body()
-        let attempts = endpoint.method == .get ? retryPolicy.maxAttempts : 1
-        for attempt in 0..<attempts {
+
+        let token: String
+        do { token = try await tokenProvider.getValidToken() }
+        catch { throw MoMoError.preSubmissionFailure(referenceId: referenceId, underlying: error) }
+
+        return try await performRequest(endpoint, bearerToken: token, submissionReferenceId: referenceId).1
+    }
+
+    private func performRequest(_ endpoint: any MoMoEndpoint, bearerToken: String?, submissionReferenceId: String? = nil) async throws -> (Data, HTTPURLResponse) {
+        var didDispatch = false
+        do {
             try Task.checkCancellation()
-            do {
-                let (data, response) = try await transport.data(for: request)
-                try Task.checkCancellation()
-                if (200...299).contains(response.statusCode) { return (data, response) }
-                let error = MoMoHTTPError(response: response, data: data)
-                if attempt + 1 < attempts && [408, 429, 500, 502, 503, 504].contains(response.statusCode) {
-                    let requested = retryAfterSeconds(response.value(forHTTPHeaderField: "Retry-After"))
-                    // A server's minimum wait must not be shortened by our retry budget.
-                    if let requested, requested > retryPolicy.maximumDelay { throw MoMoError.httpError(error) }
-                    try await delay(attempt: attempt, retryAfter: requested)
-                    continue
-                }
-                throw MoMoError.httpError(error)
-            } catch let error as URLError {
-                if error.code == .cancelled { throw CancellationError() }
-                guard attempt + 1 < attempts, [.timedOut, .networkConnectionLost, .cannotConnectToHost, .notConnectedToInternet, .dnsLookupFailed].contains(error.code) else { throw MoMoError.networkFailure(error) }
-                try await delay(attempt: attempt, retryAfter: nil)
+            guard var components = URLComponents(url: environment.baseURL, resolvingAgainstBaseURL: false),
+                  components.scheme?.lowercased() == "https", components.host?.isEmpty == false,
+                  components.user == nil, components.password == nil, components.query == nil, components.fragment == nil,
+                  endpoint.path.hasPrefix("/"), !endpoint.path.hasPrefix("//"),
+                  !endpoint.path.contains("?"), !endpoint.path.contains("#"), !endpoint.path.contains("\\"),
+                  !endpoint.path.split(separator: "/").contains(where: { $0 == "." || $0 == ".." }) else { throw MoMoError.invalidURL }
+            // All dynamic components are encoded by endpoint builders. Validate existing percent escapes.
+            let path = components.percentEncodedPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            let combined = (path.isEmpty ? "" : "/" + path) + endpoint.path
+            let permitted = CharacterSet.urlPathAllowed.union(CharacterSet(charactersIn: "%"))
+            guard combined.unicodeScalars.allSatisfy({ permitted.contains($0) }), combined.removingPercentEncoding != nil else { throw MoMoError.invalidURL }
+            components.percentEncodedPath = combined
+            guard let url = components.url else { throw MoMoError.invalidURL }
+            for value in [subscriptionKey, environment.targetEnvironmentHeaderValue, bearerToken ?? ""] {
+                guard !value.contains(where: { $0.isNewline || $0 == "\0" }) else { throw MoMoError.invalidConfiguration("Invalid authentication header") }
             }
+            var request = URLRequest(url: url)
+            request.httpMethod = endpoint.method.rawValue
+            request.timeoutInterval = 60
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue(subscriptionKey, forHTTPHeaderField: "Ocp-Apim-Subscription-Key")
+            request.setValue(environment.targetEnvironmentHeaderValue, forHTTPHeaderField: "X-Target-Environment")
+            if let bearerToken { request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization") }
+            for (key, value) in endpoint.additionalHeaders ?? [:] {
+                guard !key.contains(where: { $0.isNewline }), !value.contains(where: { $0.isNewline }) else { throw MoMoError.invalidConfiguration("Invalid header") }
+                request.setValue(value, forHTTPHeaderField: key)
+            }
+            request.httpBody = try endpoint.body()
+            let attempts = endpoint.method == .get ? retryPolicy.maxAttempts : 1
+            for attempt in 0..<attempts {
+                try Task.checkCancellation()
+                do {
+                    // No suspension occurs between this marker and the transport invocation. Failures after
+                    // this boundary may have reached the payment service, even when the transport throws.
+                    if submissionReferenceId != nil { didDispatch = true }
+                    let (data, response) = try await transport.data(for: request)
+                    try Task.checkCancellation()
+                    if (200...299).contains(response.statusCode) { return (data, response) }
+                    let error = MoMoHTTPError(response: response, data: data)
+                    if attempt + 1 < attempts && [408, 429, 500, 502, 503, 504].contains(response.statusCode) {
+                        let requested = retryAfterSeconds(response.value(forHTTPHeaderField: "Retry-After"))
+                        // A server's minimum wait must not be shortened by our retry budget.
+                        if let requested, requested > retryPolicy.maximumDelay { throw MoMoError.httpError(error) }
+                        try await delay(attempt: attempt, retryAfter: requested)
+                        continue
+                    }
+                    throw MoMoError.httpError(error)
+                } catch let error as URLError {
+                    if error.code == .cancelled { throw CancellationError() }
+                    guard attempt + 1 < attempts, [.timedOut, .networkConnectionLost, .cannotConnectToHost, .notConnectedToInternet, .dnsLookupFailed].contains(error.code) else { throw MoMoError.networkFailure(error) }
+                    try await delay(attempt: attempt, retryAfter: nil)
+                }
+            }
+            throw MoMoError.invalidConfiguration("Retry policy exhausted")
+        } catch {
+            guard let submissionReferenceId else { throw error }
+            if didDispatch {
+                throw MoMoError.transactionFailure(referenceId: submissionReferenceId, underlying: error)
+            }
+            throw MoMoError.preSubmissionFailure(referenceId: submissionReferenceId, underlying: error)
         }
-        throw MoMoError.invalidConfiguration("Retry policy exhausted")
     }
     private func delay(attempt: Int, retryAfter: Double?) async throws {
         var seconds = retryPolicy.initialDelay * pow(2, Double(attempt))

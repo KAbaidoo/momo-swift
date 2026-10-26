@@ -1,12 +1,16 @@
 # Release checklist
 
+Record the exact candidate commit, owner decisions, evidence links, and exclusions in [RELEASE_READINESS.md](RELEASE_READINESS.md). The initial release remains blocked until its pending gates are resolved.
+
+Follow [RELEASING.md](RELEASING.md) for version selection, main-only automated publication, manual retries, and partial tag/release recovery. Publication approval in `release.json` starts disabled.
+
 ## Repository verification
 
 - Run root/nested package tests and the independent consumer build.
 - Run macOS and Linux CI; compile all declared Apple deployment floors and the iOS demo.
-- Review API snapshot diffs when MTN revises contracts; update offline fixtures deliberately.
+- Run `python3 scripts/openapi-baselines.py validate-manifest` and review [the MTN baseline instructions](openapi/README.md). With private archive access, verify archived checksums and compare upstream exports before updating offline fixtures.
 - Audit published files for credentials. Preserve private setup outside tracked source.
-- Choose a license and release version with the repository owner. No license was inferred in this implementation pass.
+- Confirm the candidate contains the selected [MIT license](../LICENSE) and the `v0.1.0` experimental, best-effort support policy recorded in the readiness record.
 - Tag a release only after independent review and required checks. No tag or publication was performed here.
 
 ## Operator integration gate

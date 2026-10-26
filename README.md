@@ -4,6 +4,10 @@ A Swift Package Manager SDK for MTN MoMo Collections, Disbursements, Remittance,
 
 Requires Swift 6.2+. Declared platforms: iOS 16, macOS 13, watchOS 8, tvOS 15, and Linux. See [verification evidence](docs/REVIEW.md) for platforms actually checked. Production interoperability requires your operator's credentials and entitlements; offline contract tests cannot establish settlement or callback delivery.
 
+Licensed under [MIT](LICENSE). The initial release target is experimental `v0.1.0`, with best-effort support. See [release readiness](docs/RELEASE_READINESS.md) for stability/support expectations, outstanding operator evidence, and the gates before publication.
+
+Maintainers can follow the [release guide](docs/RELEASING.md) for version selection and automated publication from `main`. Initial publication remains disabled until the readiness prerequisites are complete.
+
 ## Installation
 
 Add this repository's Git URL in Xcode or a Swift package dependency. The root `Package.swift` supports normal repository installation; the nested `MoMoSDK/Package.swift` remains for the existing demo workspace. Choose `MoMoSDK` for the umbrella import, or the individual `MoMoCore`, `MoMoCollections`, `MoMoDisbursements`, and `MoMoRemittance` products.
@@ -41,7 +45,7 @@ if result.status == .successful {
 
 HTTP 202 means accepted, not completed. Never repeat a financial submission just because a response was lost or polling timed out. Check the stored reference with `getTransactionStatus`, or resume its wait. A 404 after an uncertain submission is not proof that it was never accepted. Unknown status values retain `rawValue` and do not terminate polling.
 
-Financial submissions are never automatically retried. GET retries are bounded, respect `Retry-After`, and may refresh a rejected product token once. Polling has bounded attempts, exponential delays, and cancellation. Uncertain submission/poll errors expose `MoMoError.referenceId`; cancellation during those operations exposes `isCancellation`. Stopping a Swift task stops waiting, not the remote payment. Prefer caller-owned references even when using `AndWait` conveniences.
+Financial submissions are never automatically retried. GET retries are bounded, respect `Retry-After`, and may refresh a rejected product token once. Polling has bounded attempts, exponential delays, and cancellation. For `requestToPay` and `deposit`, `MoMoError.preSubmissionFailure` with `isKnownPreSubmissionFailure == true` means the financial request did not reach the HTTP transport; this includes authentication, local validation, preflight, and cancellation before dispatch. Once the transport call begins, failures use `transactionFailure` and remain uncertain, including cancellation. Both errors expose `referenceId` and report cancellation through `isCancellation`; status-check errors do not mark the original submission as unsent. Stopping a Swift task after dispatch stops waiting, not the remote payment. Prefer caller-owned references even when using `AndWait` conveniences.
 
 Use positive decimal strings such as `"0.10"`; converting through `Double` can lose monetary precision. Product access tokens are cached and refreshed per client. Reuse client instances. Credentials consist of an API user, API key, and subscription key for the selected product.
 

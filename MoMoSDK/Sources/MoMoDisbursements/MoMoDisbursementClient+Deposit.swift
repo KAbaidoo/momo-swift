@@ -4,13 +4,20 @@ extension MoMoDisbursementClient {
 
     /// Submit once with a caller-owned reference ID for reconciliation.
     public func deposit(payload: DepositRequest, referenceId: UUID = UUID(), callbackURL: String? = nil, version: DisbursementAPIVersion = .v1) async throws -> String {
-        try PayoutValidation.money(amount: payload.amount, currency: payload.currency)
-        try PayoutValidation.party(payload.payee)
-        try PayoutValidation.callback(callbackURL)
         let id = referenceId.uuidString.lowercased()
-        try MoMoValidation.referenceId(id)
-        do { try await client.executeAuthenticated(DepositEndpoint.initiate(referenceId: id, payload: payload, callbackURL: callbackURL, version: version), tokenProvider: tokenProvider) }
-        catch { throw MoMoError.transactionFailure(referenceId: id, underlying: error) }
+        do {
+            try PayoutValidation.money(amount: payload.amount, currency: payload.currency)
+            try PayoutValidation.party(payload.payee)
+            try PayoutValidation.callback(callbackURL)
+            try MoMoValidation.referenceId(id)
+        } catch {
+            throw MoMoError.preSubmissionFailure(referenceId: id, underlying: error)
+        }
+        try await client.executeAuthenticatedSubmission(
+            DepositEndpoint.initiate(referenceId: id, payload: payload, callbackURL: callbackURL, version: version),
+            referenceId: id,
+            tokenProvider: tokenProvider
+        )
         return id
     }
     public func getDepositStatus(referenceId: String) async throws -> DepositStatus {
