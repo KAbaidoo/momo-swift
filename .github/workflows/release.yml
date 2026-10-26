@@ -1,0 +1,80 @@
+name: Publish MoMoSDK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Full SHA of the main release-intent commit (blank uses this run's SHA)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      eligible: ${{ steps.intent.outputs.eligible }}
+      sha: ${{ steps.intent.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - id: intent
+        name: Check main ancestry, release intent, and readiness
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_SHA: ${{ inputs.sha || github.sha }}
+        run: python3 scripts/release.py prepare
+
+  verify:
+    needs: prepare
+    if: needs.prepare.outputs.eligible == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.prepare.outputs.sha }}
+
+  publish:
+    needs: [prepare, verify]
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      needs.prepare.outputs.eligible == 'true' &&
+      needs.verify.result == 'success'
+    concurrency:
+      group: momo-sdk-release-publication
+      cancel-in-progress: false
+    runs-on: macos-26
+    permissions:
+      contents: write
+      issues: read
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Publish once after exact-SHA verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_SHA: ${{ needs.prepare.outputs.sha }}
+          VERIFIED_SHA: ${{ needs.prepare.outputs.sha }}
+          VERIFICATION_RESULT: ${{ needs.verify.result }}
+        run: python3 scripts/release.py publish

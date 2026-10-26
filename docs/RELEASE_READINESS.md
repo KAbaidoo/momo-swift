@@ -58,3 +58,5 @@ This register does not authorize live transactions. Operator validation requires
 | Publication approval | Pending | Owner approves the exact candidate and tag only after all preceding gates are satisfied |
 
 Issue #11 remains open while these gates are incomplete. No tag or release should be created from this readiness document alone.
+
+The publication automation uses [release.json](../release.json) with `publicationApproved: false`. It also requires issue #11 to be closed after the readiness gates are satisfied. See [RELEASING.md](RELEASING.md) for activation and recovery; the automation does not supply missing operator evidence or authorize live transactions.

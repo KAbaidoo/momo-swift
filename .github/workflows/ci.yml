@@ -4,6 +4,12 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: Exact release candidate commit to verify
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -14,11 +20,15 @@ jobs:
     container: swift:6.2.4
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: swift --version
       - run: python3 scripts/openapi-baselines.py validate-manifest
+      - run: python3 scripts/release.py validate
       - run: python3 -m unittest discover -s scripts/tests -v
       - run: swift test --parallel
       - run: swift build --package-path Examples/SmokeClient
@@ -29,11 +39,15 @@ jobs:
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: swift --version
       - run: python3 scripts/openapi-baselines.py validate-manifest
+      - run: python3 scripts/release.py validate
       - run: python3 -m unittest discover -s scripts/tests -v
       - run: swift test --parallel
       - run: swift test --package-path MoMoSDK
