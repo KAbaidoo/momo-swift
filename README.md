@@ -4,6 +4,8 @@ A Swift Package Manager SDK for MTN MoMo Collections, Disbursements, Remittance,
 
 Requires Swift 6.2+. Declared platforms: iOS 16, macOS 13, watchOS 8, tvOS 15, and Linux. See [verification evidence](docs/REVIEW.md) for platforms actually checked. Production interoperability requires your operator's credentials and entitlements; offline contract tests cannot establish settlement or callback delivery.
 
+Licensed under [MIT](LICENSE). The initial release target is experimental `v0.1.0`, with best-effort support. See [release readiness](docs/RELEASE_READINESS.md) for stability/support expectations, outstanding operator evidence, and the gates before publication.
+
 ## Installation
 
 Add this repository's Git URL in Xcode or a Swift package dependency. The root `Package.swift` supports normal repository installation; the nested `MoMoSDK/Package.swift` remains for the existing demo workspace. Choose `MoMoSDK` for the umbrella import, or the individual `MoMoCore`, `MoMoCollections`, `MoMoDisbursements`, and `MoMoRemittance` products.
