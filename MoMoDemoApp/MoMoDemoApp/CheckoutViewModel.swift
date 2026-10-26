@@ -10,12 +10,14 @@ class CheckoutViewModel: ObservableObject {
     @Published private(set) var referenceId: String?
     @Published private(set) var hasUnresolvedRequest = false
     let client: MoMoCollectionClient
+    private let defaults: UserDefaults
     private let referenceStorageKey = "momo.demo.collection.reference"
 
-    init(client: MoMoCollectionClient) {
+    init(client: MoMoCollectionClient, defaults: UserDefaults = .standard) {
         self.client = client
-        referenceId = UserDefaults.standard.string(forKey: referenceStorageKey)
-        hasUnresolvedRequest = referenceId != nil && (UserDefaults.standard.object(forKey: referenceStorageKey + ".unresolved") as? Bool ?? true)
+        self.defaults = defaults
+        referenceId = defaults.string(forKey: referenceStorageKey)
+        hasUnresolvedRequest = referenceId != nil && (defaults.object(forKey: referenceStorageKey + ".unresolved") as? Bool ?? true)
         if let referenceId {
             transactionStatus = "Previous request: \(referenceId). Check its status before making another payment."
         }
@@ -38,22 +40,36 @@ class CheckoutViewModel: ObservableObject {
         let id = UUID()
         referenceId = id.uuidString.lowercased()
         // Persist before submission: loss of the HTTP response is not proof of failure.
-        UserDefaults.standard.set(referenceId, forKey: referenceStorageKey)
+        defaults.set(referenceId, forKey: referenceStorageKey)
         hasUnresolvedRequest = true
-        UserDefaults.standard.set(true, forKey: referenceStorageKey + ".unresolved")
+        defaults.set(true, forKey: referenceStorageKey + ".unresolved")
         let payload = RequestToPayRequest(amount: amount, currency: currency,
             externalId: id.uuidString.lowercased(), payer: Party(partyIdType: .msisdn, partyId: phoneNumber),
             payerMessage: payerMessage, payeeNote: payeeNote)
         do {
             _ = try await client.requestToPay(payload: payload, referenceId: id)
-            transactionStatus = "Awaiting payment approval... Reference: \(referenceId ?? "")"
-            let status = try await waitForResult(referenceId: id.uuidString.lowercased())
-            show(status)
-            if status.status == .successful, !deliveryNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                do { try await client.sendDeliveryNotification(for: id.uuidString.lowercased(), message: deliveryNote) }
-                catch { transactionStatus += " Payment succeeded; the delivery notification was not confirmed." }
+        } catch {
+            if (error as? MoMoError)?.isKnownPreSubmissionFailure == true {
+                clearUnsentRequest()
+                transactionStatus = "Request was not sent. You can try again."
+            } else {
+                showUncertainOutcome(error)
             }
-        } catch { showUncertainOutcome(error) }
+            return
+        }
+
+        transactionStatus = "Awaiting payment approval... Reference: \(referenceId ?? "")"
+        let status: RequestToPayStatus
+        do { status = try await waitForResult(referenceId: id.uuidString.lowercased()) }
+        catch {
+            showUncertainOutcome(error)
+            return
+        }
+        show(status)
+        if status.status == .successful, !deliveryNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            do { try await client.sendDeliveryNotification(for: id.uuidString.lowercased(), message: deliveryNote) }
+            catch { transactionStatus += " Payment succeeded; the delivery notification was not confirmed." }
+        }
     }
 
     func checkExistingRequest() async {
@@ -73,7 +89,7 @@ class CheckoutViewModel: ObservableObject {
 
     private func show(_ result: RequestToPayStatus) {
         hasUnresolvedRequest = false
-        UserDefaults.standard.set(false, forKey: referenceStorageKey + ".unresolved")
+        defaults.set(false, forKey: referenceStorageKey + ".unresolved")
         if result.status == .successful {
             transactionStatus = "Success! Reference: \(referenceId ?? "")"
         } else {
@@ -87,5 +103,12 @@ class CheckoutViewModel: ObservableObject {
         } else {
             transactionStatus = "Status not confirmed: \(error.localizedDescription). Check this request before making another payment. Reference: \(referenceId ?? "")"
         }
+    }
+
+    private func clearUnsentRequest() {
+        defaults.removeObject(forKey: referenceStorageKey)
+        defaults.removeObject(forKey: referenceStorageKey + ".unresolved")
+        referenceId = nil
+        hasUnresolvedRequest = false
     }
 }
