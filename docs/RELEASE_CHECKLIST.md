@@ -2,6 +2,8 @@
 
 Record the exact candidate commit, owner decisions, evidence links, and exclusions in [RELEASE_READINESS.md](RELEASE_READINESS.md). The initial release remains blocked until its pending gates are resolved.
 
+Follow [RELEASING.md](RELEASING.md) for version selection, main-only automated publication, manual retries, and partial tag/release recovery. Publication approval in `release.json` starts disabled.
+
 ## Repository verification
 
 - Run root/nested package tests and the independent consumer build.
