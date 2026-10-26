@@ -10,12 +10,14 @@ class DepositViewModel: ObservableObject {
     @Published private(set) var referenceId: String?
     @Published private(set) var hasUnresolvedRequest = false
     let client: MoMoDisbursementClient
+    private let defaults: UserDefaults
     private let referenceStorageKey = "momo.demo.deposit.reference"
 
-    init(client: MoMoDisbursementClient) {
+    init(client: MoMoDisbursementClient, defaults: UserDefaults = .standard) {
         self.client = client
-        referenceId = UserDefaults.standard.string(forKey: referenceStorageKey)
-        hasUnresolvedRequest = referenceId != nil && (UserDefaults.standard.object(forKey: referenceStorageKey + ".unresolved") as? Bool ?? true)
+        self.defaults = defaults
+        referenceId = defaults.string(forKey: referenceStorageKey)
+        hasUnresolvedRequest = referenceId != nil && (defaults.object(forKey: referenceStorageKey + ".unresolved") as? Bool ?? true)
         if let referenceId {
             transactionStatus = "Previous request: \(referenceId). Check its status before making another deposit."
         }
@@ -36,17 +38,27 @@ class DepositViewModel: ObservableObject {
         defer { isProcessing = false }
         let id = UUID()
         referenceId = id.uuidString.lowercased()
-        UserDefaults.standard.set(referenceId, forKey: referenceStorageKey)
+        defaults.set(referenceId, forKey: referenceStorageKey)
         hasUnresolvedRequest = true
-        UserDefaults.standard.set(true, forKey: referenceStorageKey + ".unresolved")
+        defaults.set(true, forKey: referenceStorageKey + ".unresolved")
         transactionStatus = "Initiating deposit..."
         let payload = DepositRequest(amount: amount, currency: currency, externalId: id.uuidString.lowercased(),
             payee: Party(partyIdType: .msisdn, partyId: phoneNumber), payerMessage: payerMessage, payeeNote: payeeNote)
         do {
             _ = try await client.deposit(payload: payload, referenceId: id)
-            transactionStatus = "Awaiting deposit result... Reference: \(referenceId ?? "")"
-            show(try await waitForResult(referenceId: id.uuidString.lowercased()))
-        } catch { showUncertainOutcome(error) }
+        } catch {
+            if (error as? MoMoError)?.isKnownPreSubmissionFailure == true {
+                clearUnsentRequest()
+                transactionStatus = "Request was not sent. You can try again."
+            } else {
+                showUncertainOutcome(error)
+            }
+            return
+        }
+
+        transactionStatus = "Awaiting deposit result... Reference: \(referenceId ?? "")"
+        do { show(try await waitForResult(referenceId: id.uuidString.lowercased())) }
+        catch { showUncertainOutcome(error) }
     }
 
     func checkExistingRequest() async {
@@ -66,7 +78,7 @@ class DepositViewModel: ObservableObject {
 
     private func show(_ result: DepositStatus) {
         hasUnresolvedRequest = false
-        UserDefaults.standard.set(false, forKey: referenceStorageKey + ".unresolved")
+        defaults.set(false, forKey: referenceStorageKey + ".unresolved")
         transactionStatus = result.status == .successful
             ? "Success! Reference: \(referenceId ?? "")"
             : "Failed: \(result.reason?.message ?? "No failure message returned"). Reference: \(referenceId ?? "")"
@@ -76,5 +88,12 @@ class DepositViewModel: ObservableObject {
         transactionStatus = error is CancellationError || (error as? MoMoError)?.isCancellation == true
             ? "Stopped waiting. The deposit may still complete. Reference: \(referenceId ?? "")"
             : "Status not confirmed: \(error.localizedDescription). Check this request before making another deposit. Reference: \(referenceId ?? "")"
+    }
+
+    private func clearUnsentRequest() {
+        defaults.removeObject(forKey: referenceStorageKey)
+        defaults.removeObject(forKey: referenceStorageKey + ".unresolved")
+        referenceId = nil
+        hasUnresolvedRequest = false
     }
 }

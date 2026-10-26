@@ -34,6 +34,8 @@ public indirect enum MoMoError: Error, LocalizedError {
     case httpError(MoMoHTTPError)
     case pollingExhausted(referenceId: String)
     case transactionFailure(referenceId: String, underlying: any Error)
+    /// A submission failed before its financial request was handed to the HTTP transport.
+    case preSubmissionFailure(referenceId: String, underlying: any Error)
     case badRequest(message: String), unauthorized(message: String), conflict(message: String), resourceNotFound(message: String)
     case serverError(statusCode: Int)
     case decodingFailed(DecodingError)
@@ -41,13 +43,21 @@ public indirect enum MoMoError: Error, LocalizedError {
     /// Cancellation of a financial operation stops waiting; it does not cancel settlement.
     public var isCancellation: Bool {
         switch self {
-        case .transactionFailure(_, let error):
+        case .transactionFailure(_, let error), .preSubmissionFailure(_, let error):
             return error is CancellationError || (error as? MoMoError)?.isCancellation == true
         default: return false
         }
     }
+    /// Whether the SDK can confirm that the financial request was never dispatched.
+    public var isKnownPreSubmissionFailure: Bool {
+        if case .preSubmissionFailure = self { return true }
+        return false
+    }
     public var referenceId: String? {
-        switch self { case .pollingExhausted(let id), .transactionFailure(let id, _): return id; default: return nil }
+        switch self {
+        case .pollingExhausted(let id), .transactionFailure(let id, _), .preSubmissionFailure(let id, _): return id
+        default: return nil
+        }
     }
     public var statusCode: Int? {
         switch self {
@@ -57,7 +67,7 @@ public indirect enum MoMoError: Error, LocalizedError {
         case .conflict: return 409
         case .resourceNotFound: return 404
         case .serverError(let code), .unexpectedResponse(let code, _): return code
-        case .transactionFailure(_, let error): return (error as? MoMoError)?.statusCode
+        case .transactionFailure(_, let error), .preSubmissionFailure(_, let error): return (error as? MoMoError)?.statusCode
         default: return nil
         }
     }
@@ -70,6 +80,7 @@ public indirect enum MoMoError: Error, LocalizedError {
         case .networkFailure(let error): return error.localizedDescription
         case .pollingExhausted(let id): return "Polling exhausted; reconcile transaction \(id)"
         case .transactionFailure(let id, _): return "Transaction outcome uncertain; reconcile \(id)"
+        case .preSubmissionFailure(let id, let error): return "Request was not submitted (\(id)): \(error.localizedDescription)"
         case .badRequest(let msg), .unauthorized(let msg), .conflict(let msg), .resourceNotFound(let msg): return msg
         case .serverError(let code): return "Server error \(code)"
         case .decodingFailed: return "Failed to decode response"
