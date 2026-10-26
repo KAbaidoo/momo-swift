@@ -14,7 +14,12 @@ jobs:
     container: swift:6.2.4
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - run: swift --version
+      - run: python3 scripts/openapi-baselines.py validate-manifest
+      - run: python3 -m unittest discover -s scripts/tests -v
       - run: swift test --parallel
       - run: swift build --package-path Examples/SmokeClient
 
@@ -24,7 +29,12 @@ jobs:
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - run: swift --version
+      - run: python3 scripts/openapi-baselines.py validate-manifest
+      - run: python3 -m unittest discover -s scripts/tests -v
       - run: swift test --parallel
       - run: swift test --package-path MoMoSDK
       - run: swift build --package-path Examples/SmokeClient
