@@ -52,7 +52,7 @@ This register does not authorize live transactions. Operator validation requires
 
 ## Final approval record
 
-On 26 October 2026, the repository owner explicitly instructed that this experimental scope be finalized, that its approval be recorded, and that issue #11 be closed. Approval covers MIT licensing, the experimental v0.1.0 prerelease with best-effort support, offline/build claims, and the operator/production exclusions above. It does not assert live integration success, waive exact-commit verification, or enable publication.
+On 26 October 2026, the repository owner explicitly instructed that this experimental scope be finalized, that its approval be recorded, and that issue #11 be closed. Approval covers MIT licensing, the experimental v0.1.0 prerelease with best-effort support, offline/build claims, and the operator/production exclusions above. The owner subsequently authorized publication activation and merging its release-intent change into main. This approval does not assert live integration success or waive exact-commit verification.
 
 | Gate | State | Required completion |
 | --- | --- | --- |
@@ -62,8 +62,8 @@ On 26 October 2026, the repository owner explicitly instructed that this experim
 | Operator claim scope | Approved exclusions; operator behavior remains unverified | Preserve these exclusions in release documentation; require evidence before expanding claims |
 | Experimental scope approval | Granted by the owner on 26 October 2026 | Close issue #11 with a reference to this record |
 | Final candidate verification | Required for the exact main SHA; not yet established by this record | Pipeline must pass Apple/Linux verification and the versioned-consumer build before publishing |
-| Publication activation | Disabled: `publicationApproved: false` | Separately approve activation in release.json and merge the release-intent change into main |
+| Publication activation | Owner approved: `publicationApproved: true` for experimental v0.1.0 | Merge the release-intent change into main; the pipeline must verify that exact commit before publishing |
 
 Issue #11 can be closed on the basis of the owner-approved experimental scope and explicit exclusions. Closing it completes the scope decision; final candidate verification and publication activation remain mandatory pipeline gates. No tag or release should be created from this readiness document alone.
 
-The publication automation uses [release.json](../release.json) with `publicationApproved: false`. It also requires issue #11 to be closed after scope approval. See [RELEASING.md](RELEASING.md) for activation and recovery; the automation does not supply missing operator evidence or authorize live transactions.
+The publication automation uses [release.json](../release.json) with `publicationApproved: true` for the owner-approved experimental v0.1.0 prerelease. Issue #11 is closed after scope approval. See [RELEASING.md](RELEASING.md) for publication and recovery; the automation does not supply missing operator evidence or authorize live transactions.
